@@ -1,12 +1,18 @@
 use chumsky::prelude::*;
 
-type Span = SimpleSpan<usize>;
+use super::literal::Literal;
 
-type Number = i32;
-type NumberError = i32;
+type Span = SimpleSpan<usize>;
 
 #[derive(Debug)]
 pub enum Token<'src> {
+    Literal(Literal<'src>),
+    Keyword(&'src str),
+    ReservedWord(&'src str),
+    SyntaxToken(&'src str),
+    Ident(&'src str),
+    ContextDependantName(&'src str),
+
     Separator(char),
     Paren(char),
     Attribute,
@@ -23,6 +29,41 @@ pub enum Token<'src> {
     Trivia,
     End,
     Comment,
+}
+
+pub fn literal<'src>(
+) -> impl Parser<'src, &'src str, Token<'src>, extra::Err<Rich<'src, char, Span>>> {
+    let boolean_literal = choice((
+        just("true").map(|_| Literal::Boolean(true)),
+        just("false").map(|_| Literal::Boolean(false)),
+    ));
+
+    let int_literal = {
+        let decimal = regex("0[iu]?").or(regex("[1-9][0-9]*[iu]?"));
+        let hex = regex("0[xX][0-9a-fA-F]+[iu]?");
+
+        choice((hex, decimal)).map(Literal::Int)
+    };
+
+    let float_literal = {
+        let decimal = choice((
+            regex("0[fh]"),
+            regex("[1-9][0-9]*[fh]"),
+            regex("[0-9]*\\.[0-9]+([eE][+-]?[0-9]+)?[fh]?"),
+            regex("[0-9]+\\.[0-9]*([eE][+-]?[0-9]+)?[fh]?"),
+            regex("[0-9]+[eE][+-]?[0-9]+[fh]?"),
+        ));
+
+        let hex = choice((
+            regex("0[xX][0-9a-fA-F]*\\.[0-9a-fA-F]+([pP][+-]?[0-9]+[fh]?)?"),
+            regex("0[xX][0-9a-fA-F]+\\.[0-9a-fA-F]*([pP][+-]?[0-9]+[fh]?)?"),
+            regex("0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fh]?"),
+        ));
+
+        choice((decimal, hex)).map(Literal::Float)
+    };
+
+    choice((boolean_literal, int_literal, float_literal)).map(Token::Literal)
 }
 
 pub fn lexer<'src>(
@@ -47,7 +88,7 @@ pub fn lexer<'src>(
 
     let number = hex_int_literal;
 
-    let token = choice((separator, attribute, number, word));
+    let token = choice((literal(), separator, attribute, number, word));
 
     token
         // Add spans to all tokens
