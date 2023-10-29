@@ -12,7 +12,6 @@ pub enum Token<'src> {
     SyntaxToken(&'src str),
     Ident(&'src str),
     ContextDependantName(&'src str),
-
     Separator(char),
     Paren(char),
     Attribute,
@@ -66,29 +65,49 @@ pub fn literal<'src>(
     choice((boolean_literal, int_literal, float_literal)).map(Token::Literal)
 }
 
+pub fn keyword<'src>(
+) -> impl Parser<'src, &'src str, Token<'src>, extra::Err<Rich<'src, char, Span>>> {
+    choice((
+        just("alias"),
+        just("break"),
+        just("case"),
+        just("const"),
+        just("const_assert"),
+        just("continue"),
+        just("continuing"),
+        just("default"),
+        just("diagnostic"),
+        just("discard"),
+        just("else"),
+        just("enable"),
+        just("false"),
+        just("fn"),
+        just("for"),
+        just("if"),
+        just("let"),
+        just("loop"),
+        just("override"),
+        just("requires"),
+        just("return"),
+        just("struct"),
+        just("switch"),
+        just("true"),
+        just("var"),
+        just("while"),
+    ))
+    .map(Token::Keyword)
+}
+
 pub fn lexer<'src>(
 ) -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, extra::Err<Rich<'src, char, Span>>> {
-    let separator = one_of(":;,").map(Token::Separator);
-
-    let attribute = just("@").map(|_| Token::Attribute);
-
-    let word = text::ascii::ident().map(Token::Word);
-
-    let hex_int_literal = regex("/0[xX][0-9a-fA-F]+[iu]?/")
-        .padded()
-        .map(Token::Number);
-
     let line_comment = just("//").then(none_of('\n').repeated()).padded();
-
     // TODO: Make this recursive
     let block_comment = {
         let content = any().and_is(just("/*").or(just("*/")).not()).repeated();
         content.delimited_by(just("/*"), just("*/"))
     };
 
-    let number = hex_int_literal;
-
-    let token = choice((literal(), separator, attribute, number, word));
+    let token = choice((keyword(), literal()));
 
     token
         // Add spans to all tokens
