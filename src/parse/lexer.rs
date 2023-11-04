@@ -104,7 +104,14 @@ pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr
     todo()
 }
 
-pub fn lexer(_source: &str) -> impl Parser<'_, &str, Vec<(Token, Span)>, RichErr<'_>> {
+pub fn template_delimiter<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
+    choice((
+        just('⋖').map(|_| Token::TemplateArgsStart),
+        just('⋗').map(|_| Token::TemplateArgsEnd),
+    ))
+}
+
+pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
     let line_comment = just("//").then(none_of('\n').repeated()).padded();
     // TODO: Make this recursive
     let block_comment = {
@@ -113,7 +120,7 @@ pub fn lexer(_source: &str) -> impl Parser<'_, &str, Vec<(Token, Span)>, RichErr
     };
 
     // TODO: Reserved words
-    let token = choice((keyword(), literal()));
+    let token = choice((keyword(), literal(), template_delimiter()));
 
     token
         // Add spans to all tokens

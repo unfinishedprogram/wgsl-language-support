@@ -4,5 +4,3 @@ pub enum Literal<'src> {
     Int(&'src str),
     Float(&'src str),
 }
-
-pub enum FloatLiteral {}

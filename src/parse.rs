@@ -1,3 +1,3 @@
 pub mod lexer;
-pub mod literal;
+mod literal;
 pub mod templates;

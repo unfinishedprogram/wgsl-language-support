@@ -1,8 +1,9 @@
 use chumsky::Parser;
-use wgsl_ast::parse::lexer;
+use wgsl_ast::parse::lexer::lexer;
 
 fn main() {
     let source = include_str!("../../test_data/collatz.wgsl");
-    // dbg!(extract_template_lists(source, templates(source)));
-    dbg!(lexer::lexer(source).parse(source));
+    let templated = wgsl_ast::parse::templates::insert_template_delimiters(source);
+    let tokens = lexer().parse(&templated);
+    dbg!(tokens);
 }

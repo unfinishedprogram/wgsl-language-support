@@ -3,7 +3,7 @@ struct UnclosedCandidate {
     depth: u32,
 }
 
-pub fn templates(src: &str) -> Vec<(usize, usize)> {
+pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
     let chars: Vec<char> = src.chars().collect();
     let mut discovered_template_lists = vec![];
     let mut pending: Vec<UnclosedCandidate> = vec![];
@@ -117,5 +117,26 @@ pub fn extract_template_lists(src: &str, template_lists: Vec<(usize, usize)>) ->
     template_lists
         .into_iter()
         .map(|(start, end)| chars[start..=end].iter().collect())
+        .collect()
+}
+
+pub fn insert_template_delimiters(src: &str) -> String {
+    let templates = find_templates(src);
+
+    // Replace the characters in the template with special chars that are unlikely to be otherwise used
+    // TODO: Make this algorithm more efficient
+    src.chars()
+        .enumerate()
+        .map(|(index, ch)| {
+            for (start, end) in &templates {
+                if index == *start {
+                    return '⋖';
+                } else if index == *end {
+                    return '⋗';
+                }
+            }
+
+            ch
+        })
         .collect()
 }
