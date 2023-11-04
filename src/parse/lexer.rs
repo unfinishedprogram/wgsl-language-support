@@ -1,6 +1,6 @@
-use chumsky::prelude::*;
+use chumsky::{input::Offset, prelude::*};
 
-use super::literal::Literal;
+use super::{literal::Literal, templates::templates};
 
 type Span = SimpleSpan<usize>;
 
@@ -12,6 +12,9 @@ pub enum Token<'src> {
     SyntaxToken(&'src str),
     Ident(&'src str),
     ContextDependantName(&'src str),
+    TemplateArgsStart,
+    TemplateArgsEnd,
+
     Separator(char),
     Paren(char),
     Attribute,
@@ -98,8 +101,14 @@ pub fn keyword<'src>(
     .map(Token::Keyword)
 }
 
-pub fn lexer<'src>(
-) -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, extra::Err<Rich<'src, char, Span>>> {
+pub fn syntax_token<'src>(
+) -> impl Parser<'src, &'src str, Token<'src>, extra::Err<Rich<'src, char, Span>>> {
+    todo()
+}
+
+pub fn lexer(
+    source: &str,
+) -> impl Parser<'_, &str, Vec<(Token, Span)>, extra::Err<Rich<char, Span>>> {
     let line_comment = just("//").then(none_of('\n').repeated()).padded();
     // TODO: Make this recursive
     let block_comment = {
@@ -107,6 +116,7 @@ pub fn lexer<'src>(
         content.delimited_by(just("/*"), just("*/"))
     };
 
+    // TODO: Reserved words
     let token = choice((keyword(), literal()));
 
     token

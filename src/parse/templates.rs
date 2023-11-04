@@ -1,0 +1,121 @@
+struct UnclosedCandidate {
+    position: usize,
+    depth: u32,
+}
+
+pub fn templates(src: &str) -> Vec<(usize, usize)> {
+    let chars: Vec<char> = src.chars().collect();
+    let mut discovered_template_lists = vec![];
+    let mut pending: Vec<UnclosedCandidate> = vec![];
+    let mut current_position: usize = 0;
+    let mut nesting_depth: u32 = 0;
+
+    loop {
+        match chars[current_position] {
+            '<' => {
+                pending.push(UnclosedCandidate {
+                    position: current_position,
+                    depth: nesting_depth,
+                });
+                current_position += 1;
+                if chars[current_position] == '<' || chars[current_position] == '=' {
+                    pending.pop();
+                    current_position += 1;
+                    continue;
+                }
+            }
+            '>' => match pending.last() {
+                Some(unclosed) if unclosed.depth == nesting_depth => {
+                    discovered_template_lists.push((unclosed.position, current_position));
+                    pending.pop();
+                    current_position += 1;
+                    continue;
+                }
+                _ => {
+                    current_position += 1;
+                    if chars[current_position] == '=' {
+                        current_position += 1
+                    }
+                    continue;
+                }
+            },
+
+            '(' | '[' => {
+                nesting_depth += 1;
+                current_position += 1;
+                continue;
+            }
+
+            ')' | ']' => {
+                loop {
+                    pending.pop();
+                    if pending.is_empty() || pending.last().unwrap().depth < nesting_depth {
+                        break;
+                    }
+                }
+                nesting_depth = nesting_depth.saturating_sub(1);
+                current_position += 1;
+                continue;
+            }
+
+            '!' => {
+                current_position += 1;
+                if chars[current_position] == '=' {
+                    current_position += 1
+                }
+                continue;
+            }
+
+            '=' => {
+                current_position += 1;
+                if chars[current_position] != '=' {
+                    nesting_depth = 0;
+                    pending.clear();
+                }
+                current_position += 1;
+                continue;
+            }
+
+            ';' | '{' | ':' => {
+                nesting_depth = 0;
+                pending.clear();
+                current_position += 1;
+            }
+
+            '&' if chars[current_position + 1] == '&' => {
+                loop {
+                    pending.pop();
+                    if pending.is_empty() || pending.last().unwrap().depth < nesting_depth {
+                        break;
+                    }
+                }
+                current_position += 2;
+            }
+
+            '|' if chars[current_position + 1] == '|' => {
+                loop {
+                    pending.pop();
+                    if pending.is_empty() || pending.last().unwrap().depth < nesting_depth {
+                        break;
+                    }
+                }
+                current_position += 2;
+            }
+            _ => current_position += 1,
+        };
+
+        if current_position >= chars.len() {
+            break;
+        }
+    }
+
+    discovered_template_lists
+}
+
+pub fn extract_template_lists(src: &str, template_lists: Vec<(usize, usize)>) -> Vec<String> {
+    let chars: Vec<char> = src.chars().collect();
+    template_lists
+        .into_iter()
+        .map(|(start, end)| chars[start..=end].iter().collect())
+        .collect()
+}
