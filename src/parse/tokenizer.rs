@@ -8,30 +8,10 @@ type RichErr<'src> = extra::Err<Rich<'src, char, Span>>;
 #[derive(Debug)]
 pub enum Token<'src> {
     Literal(Literal<'src>),
-    Keyword(&'src str),
-    ReservedWord(&'src str),
-    SyntaxToken(&'src str),
+    SyntaxToken(char),
     Ident(&'src str),
-    ContextDependantName(&'src str),
     TemplateArgsStart,
     TemplateArgsEnd,
-
-    Separator(char),
-    Paren(char),
-    Attribute,
-    Number(&'src str),
-    Word(&'src str),
-    Operation(char),
-    LogicalOperation(char),
-    ShiftOperation(char),
-    AssignmentOperation(char),
-    IncrementOperation,
-    DecrementOperation,
-    Arrow,
-    Unknown(char),
-    Trivia,
-    End,
-    Comment,
 }
 
 pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
@@ -68,40 +48,8 @@ pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src
     choice((boolean_literal, int_literal, float_literal)).map(Token::Literal)
 }
 
-pub fn keyword<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
-    choice((
-        just("alias"),
-        just("break"),
-        just("case"),
-        just("const"),
-        just("const_assert"),
-        just("continue"),
-        just("continuing"),
-        just("default"),
-        just("diagnostic"),
-        just("discard"),
-        just("else"),
-        just("enable"),
-        just("false"),
-        just("fn"),
-        just("for"),
-        just("if"),
-        just("let"),
-        just("loop"),
-        just("override"),
-        just("requires"),
-        just("return"),
-        just("struct"),
-        just("switch"),
-        just("true"),
-        just("var"),
-        just("while"),
-    ))
-    .map(Token::Keyword)
-}
-
 pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
-    todo()
+    one_of("{}[]()@:,.;<>=*/-+%").map(Token::SyntaxToken)
 }
 
 pub fn template_delimiter<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
@@ -111,7 +59,11 @@ pub fn template_delimiter<'src>() -> impl Parser<'src, &'src str, Token<'src>, R
     ))
 }
 
-pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
+pub fn ident<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
+    text::unicode::ident().map(Token::Ident)
+}
+
+pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
     let line_comment = just("//").then(none_of('\n').repeated()).padded();
     // TODO: Make this recursive
     let block_comment = {
@@ -119,8 +71,7 @@ pub fn lexer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, R
         content.delimited_by(just("/*"), just("*/"))
     };
 
-    // TODO: Reserved words
-    let token = choice((keyword(), literal(), template_delimiter()));
+    let token = choice((literal(), template_delimiter(), syntax_token())).or(ident());
 
     token
         // Add spans to all tokens
