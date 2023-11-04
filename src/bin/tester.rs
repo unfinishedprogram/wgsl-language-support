@@ -1,8 +1,5 @@
 use chumsky::Parser;
-use wgsl_ast::parse::{
-    lexer,
-    templates::{extract_template_lists, templates},
-};
+use wgsl_ast::parse::lexer;
 
 fn main() {
     let source = include_str!("../../test_data/collatz.wgsl");

@@ -1,8 +1,9 @@
-use chumsky::{input::Offset, prelude::*};
+use chumsky::prelude::*;
 
-use super::{literal::Literal, templates::templates};
+use super::literal::Literal;
 
 type Span = SimpleSpan<usize>;
+type RichErr<'src> = extra::Err<Rich<'src, char, Span>>;
 
 #[derive(Debug)]
 pub enum Token<'src> {
@@ -33,8 +34,7 @@ pub enum Token<'src> {
     Comment,
 }
 
-pub fn literal<'src>(
-) -> impl Parser<'src, &'src str, Token<'src>, extra::Err<Rich<'src, char, Span>>> {
+pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     let boolean_literal = choice((
         just("true").map(|_| Literal::Boolean(true)),
         just("false").map(|_| Literal::Boolean(false)),
@@ -68,8 +68,7 @@ pub fn literal<'src>(
     choice((boolean_literal, int_literal, float_literal)).map(Token::Literal)
 }
 
-pub fn keyword<'src>(
-) -> impl Parser<'src, &'src str, Token<'src>, extra::Err<Rich<'src, char, Span>>> {
+pub fn keyword<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     choice((
         just("alias"),
         just("break"),
@@ -101,14 +100,11 @@ pub fn keyword<'src>(
     .map(Token::Keyword)
 }
 
-pub fn syntax_token<'src>(
-) -> impl Parser<'src, &'src str, Token<'src>, extra::Err<Rich<'src, char, Span>>> {
+pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     todo()
 }
 
-pub fn lexer(
-    source: &str,
-) -> impl Parser<'_, &str, Vec<(Token, Span)>, extra::Err<Rich<char, Span>>> {
+pub fn lexer(_source: &str) -> impl Parser<'_, &str, Vec<(Token, Span)>, RichErr<'_>> {
     let line_comment = just("//").then(none_of('\n').repeated()).padded();
     // TODO: Make this recursive
     let block_comment = {
