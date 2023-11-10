@@ -1,3 +1,5 @@
+#![feature(type_alias_impl_trait)]
+
 pub mod parse;
 
 pub fn add(left: usize, right: usize) -> usize {

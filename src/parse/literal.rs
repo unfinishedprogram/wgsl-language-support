@@ -1,6 +1,6 @@
-#[derive(Debug)]
-pub enum Literal<'src> {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Literal {
     Boolean(bool),
-    Int(&'src str),
-    Float(&'src str),
+    Int(String),
+    Float(String),
 }

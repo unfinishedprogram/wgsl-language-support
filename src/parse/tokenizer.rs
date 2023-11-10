@@ -5,14 +5,75 @@ use super::literal::Literal;
 type Span = SimpleSpan<usize>;
 type RichErr<'src> = extra::Err<Rich<'src, char, Span>>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token<'src> {
-    Literal(Literal<'src>),
+    Literal(Literal),
+    Keyword(Keyword),
     SyntaxToken(&'src str),
     Ident(&'src str),
     Trivia,
     TemplateArgsStart,
     TemplateArgsEnd,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Keyword {
+    Alias,
+    Break,
+    Case,
+    Const,
+    ConstAssert,
+    Continue,
+    Continuing,
+    Default,
+    Diagnostic,
+    Discard,
+    Else,
+    Enable,
+    Fn,
+    For,
+    If,
+    Let,
+    Loop,
+    Override,
+    Requires,
+    Return,
+    Struct,
+    Switch,
+    Var,
+    While,
+}
+
+pub fn keyword<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
+    use Keyword::*;
+
+    choice((
+        just("alias").map(|_| Alias),
+        just("break").map(|_| Break),
+        just("case").map(|_| Case),
+        just("const").map(|_| Const),
+        just("constAssert").map(|_| ConstAssert),
+        just("continue").map(|_| Continue),
+        just("continuing").map(|_| Continuing),
+        just("default").map(|_| Default),
+        just("diagnostic").map(|_| Diagnostic),
+        just("discard").map(|_| Discard),
+        just("else").map(|_| Else),
+        just("enable").map(|_| Enable),
+        just("fn").map(|_| Fn),
+        just("for").map(|_| For),
+        just("if").map(|_| If),
+        just("let").map(|_| Let),
+        just("loop").map(|_| Loop),
+        just("override").map(|_| Override),
+        just("requires").map(|_| Requires),
+        just("return").map(|_| Return),
+        just("struct").map(|_| Struct),
+        just("switch").map(|_| Switch),
+        just("var").map(|_| Var),
+        just("while").map(|_| While),
+    ))
+    .map(Token::Keyword)
 }
 
 pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
@@ -25,7 +86,7 @@ pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src
         let decimal = regex("0[iu]?").or(regex("[1-9][0-9]*[iu]?"));
         let hex = regex("0[xX][0-9a-fA-F]+[iu]?");
 
-        choice((hex, decimal)).map(Literal::Int)
+        choice((hex, decimal)).map(|s: &str| Literal::Int(s.to_string()))
     };
 
     let float_literal = {
@@ -43,7 +104,7 @@ pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src
             regex("0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fh]?"),
         ));
 
-        choice((decimal, hex)).map(Literal::Float)
+        choice((decimal, hex)).map(|s: &str| Literal::Float(s.to_string()))
     };
 
     choice((boolean_literal, int_literal, float_literal)).map(Token::Literal)
@@ -130,7 +191,14 @@ pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>
 }
 
 pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
-    let token = choice((trivia(), literal(), template_delimiter(), syntax_token())).or(ident());
+    let token = choice((
+        trivia(),
+        keyword(),
+        literal(),
+        template_delimiter(),
+        syntax_token(),
+        ident(),
+    ));
 
     token
         // Add spans to all tokens
