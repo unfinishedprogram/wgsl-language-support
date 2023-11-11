@@ -1,12 +1,12 @@
 use chumsky::{prelude::Input, Parser};
-use wgsl_ast::parse::{ast::expression::singular_expression_parser, tokenizer::tokenizer};
+use wgsl_ast::parse::{ast::expression::singular_expression, tokenizer::tokenizer};
 
 fn main() {
     let source = include_str!("test.wgsl");
     let templated = wgsl_ast::parse::templates::insert_template_delimiters(source);
     let tokens = tokenizer().parse(&templated).unwrap();
 
-    let ast = singular_expression_parser()
+    let ast = singular_expression()
         .parse(
             tokens
                 .as_slice()
