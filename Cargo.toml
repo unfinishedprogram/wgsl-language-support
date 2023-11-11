@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 chumsky = { version = "1.0.0-alpha.6", features = ["regex"] }
+regex = "1.10.2"

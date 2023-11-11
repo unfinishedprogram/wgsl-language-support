@@ -35,15 +35,15 @@ impl<T: SpanAble + PartialEq> PartialEq for WithSpan<T> {
 pub struct WithSpan<T: SpanAble>(SimpleSpan<usize>, T);
 
 impl<T: SpanAble> WithSpan<T> {
-    fn span(&self) -> SimpleSpan<usize> {
+    pub fn span(&self) -> SimpleSpan<usize> {
         self.0
     }
 
-    fn as_inner(&self) -> &T {
+    pub fn as_inner(&self) -> &T {
         &self.1
     }
 
-    fn into_inner(self) -> T {
+    pub fn into_inner(self) -> T {
         self.1
     }
 }

@@ -10,7 +10,7 @@ pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
     let mut current_position: usize = 0;
     let mut nesting_depth: u32 = 0;
 
-    loop {
+    while current_position < chars.len() {
         match chars[current_position] {
             '<' => {
                 pending.push(UnclosedCandidate {
@@ -103,10 +103,6 @@ pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
             }
             _ => current_position += 1,
         };
-
-        if current_position >= chars.len() {
-            break;
-        }
     }
 
     discovered_template_lists
