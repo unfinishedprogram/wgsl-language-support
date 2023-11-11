@@ -1,9 +1,6 @@
-use std::{
-    fmt::{Debug, Display, Formatter},
-    ops::{Deref, DerefMut},
-};
+use std::fmt::{Debug, Display, Formatter};
 
-use chumsky::span::{SimpleSpan, Span};
+use chumsky::span::SimpleSpan;
 
 pub trait SpanAble: Sized {
     fn with_span(self, span: SimpleSpan<usize>) -> WithSpan<Self> {
