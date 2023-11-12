@@ -1,4 +1,4 @@
-use chumsky::{extra::Err, prelude::*};
+use chumsky::prelude::*;
 
 mod relational_expression;
 use regex::Regex;
@@ -11,10 +11,6 @@ use self::relational_expression::{
 };
 
 use super::{ParserInput, RichErr};
-
-// https://www.w3.org/TR/WGSL/#syntax-primary_expression
-#[derive(Debug, Clone)]
-pub enum PrimaryExpression {}
 
 #[derive(Debug, Clone)]
 enum ComponentOrSwizzleSpecifierInner {
@@ -68,7 +64,7 @@ pub enum Expression {
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
 }
 
-pub fn template_arg_expression<'tokens, 'src: 'tokens>(
+fn template_arg_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -77,7 +73,7 @@ pub fn template_arg_expression<'tokens, 'src: 'tokens>(
     expr.map(TemplateArgExpression)
 }
 
-pub fn argument_expression_list<'tokens, 'src: 'tokens>(
+fn argument_expression_list<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -89,7 +85,7 @@ pub fn argument_expression_list<'tokens, 'src: 'tokens>(
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
 }
 
-pub fn template_list<'tokens, 'src: 'tokens>(
+fn template_list<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -103,7 +99,7 @@ pub fn template_list<'tokens, 'src: 'tokens>(
         .map(TemplateList)
 }
 
-pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
+fn template_elaborated_ident<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -114,7 +110,7 @@ pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
         .map(|(ident, templates)| TemplateElaboratedIdent(Ident(ident), templates))
 }
 
-pub fn call_expression<'tokens, 'src: 'tokens>(
+fn call_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -125,7 +121,7 @@ pub fn call_expression<'tokens, 'src: 'tokens>(
         .map(|(ident, args)| CallExpression(CallPhrase(ident, ArgumentExpressionList(args))))
 }
 
-pub fn paren_expression<'tokens, 'src: 'tokens>(
+fn paren_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -133,12 +129,12 @@ pub fn paren_expression<'tokens, 'src: 'tokens>(
     expr.delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
 }
 
-pub fn literal<'tokens, 'src: 'tokens>(
+fn literal<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Literal, RichErr<'src, 'tokens>> + Clone {
     select! { Token::Literal(lit) => lit }
 }
 
-pub fn primary_expression<'tokens, 'src: 'tokens>(
+fn primary_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -151,7 +147,7 @@ pub fn primary_expression<'tokens, 'src: 'tokens>(
     ))
 }
 
-pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
+fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -184,7 +180,7 @@ pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
     })
 }
 
-pub fn singular_expression<'tokens, 'src: 'tokens>(
+fn singular_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,

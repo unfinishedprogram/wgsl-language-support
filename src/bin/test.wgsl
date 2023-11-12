@@ -1,1 +1,1 @@
-thing()
+test(another_thing,)
