@@ -68,9 +68,12 @@ pub enum BinaryOperator {
 }
 
 pub fn relational_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     choice((
-        shift_expression()
+        shift_expression(expr.clone())
             .then(select! {
                 Token::SyntaxToken("<") => RelationalOperator::LessThan,
                 Token::SyntaxToken(">") => RelationalOperator::GreaterThan,
@@ -79,7 +82,7 @@ pub fn relational_expression<'tokens, 'src: 'tokens>(
                 Token::SyntaxToken("==") => RelationalOperator::Equal,
                 Token::SyntaxToken("!=") => RelationalOperator::NotEqual,
             })
-            .then(shift_expression())
+            .then(shift_expression(expr.clone()))
             .map(|((left, op), right)| {
                 Expression::Binary(
                     Box::new(left),
@@ -87,20 +90,23 @@ pub fn relational_expression<'tokens, 'src: 'tokens>(
                     Box::new(right),
                 )
             }),
-        shift_expression(),
+        shift_expression(expr),
     ))
 }
 
 pub fn shift_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     choice((
-        additive_expression(),
-        unary_expression()
+        additive_expression(expr.clone()),
+        unary_expression(expr.clone())
             .then(select! {
                 Token::SyntaxToken("<<") => ShiftOperator::ShiftLeft,
                 Token::SyntaxToken(">>") => ShiftOperator::ShiftRight,
             })
-            .then(unary_expression())
+            .then(unary_expression(expr.clone()))
             .map(|((left, op), right)| {
                 Expression::Binary(Box::new(left), BinaryOperator::Shift(op), Box::new(right))
             }),
@@ -109,15 +115,18 @@ pub fn shift_expression<'tokens, 'src: 'tokens>(
 
 // DONE
 pub fn additive_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            multiplicative_expression(),
+            multiplicative_expression(expr.clone()),
             this.then(select! {
                 Token::SyntaxToken("+") => AdditiveOperator::Plus,
                 Token::SyntaxToken("-") => AdditiveOperator::Minus,
             })
-            .then(multiplicative_expression())
+            .then(multiplicative_expression(expr))
             .map(|((left, op), right)| {
                 Expression::Binary(
                     Box::new(left),
@@ -131,16 +140,19 @@ pub fn additive_expression<'tokens, 'src: 'tokens>(
 
 // DONE
 pub fn multiplicative_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            unary_expression(),
+            unary_expression(expr.clone()),
             this.then(select! {
                 Token::SyntaxToken("*") => MultiplicativeOperator::Multiply,
                 Token::SyntaxToken("/") => MultiplicativeOperator::Divide,
                 Token::SyntaxToken("%") => MultiplicativeOperator::Modulo,
             })
-            .then(unary_expression())
+            .then(unary_expression(expr))
             .map(|((left, op), right)| {
                 Expression::Binary(
                     Box::new(left),
@@ -154,10 +166,13 @@ pub fn multiplicative_expression<'tokens, 'src: 'tokens>(
 
 // DONE
 pub fn unary_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            singular_expression(),
+            singular_expression(expr),
             choice((
                 just(Token::SyntaxToken("-")).map(|_| UnaryOperator::Negative),
                 just(Token::SyntaxToken("!")).map(|_| UnaryOperator::Not),
@@ -172,12 +187,15 @@ pub fn unary_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn short_circuit_or_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            relational_expression(),
+            relational_expression(expr.clone()),
             this.then(just(Token::SyntaxToken("||")))
-                .then(relational_expression())
+                .then(relational_expression(expr))
                 .map(|((left, _), right)| {
                     Expression::Binary(
                         Box::new(left),
@@ -190,12 +208,15 @@ pub fn short_circuit_or_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn short_circuit_and_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            relational_expression(),
+            relational_expression(expr.clone()),
             this.then(just(Token::SyntaxToken("&&")))
-                .then(relational_expression())
+                .then(relational_expression(expr))
                 .map(|((left, _), right)| {
                     Expression::Binary(
                         Box::new(left),
@@ -208,12 +229,15 @@ pub fn short_circuit_and_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn binary_and_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            unary_expression(),
+            unary_expression(expr.clone()),
             this.then(just(Token::SyntaxToken("&")))
-                .then(unary_expression())
+                .then(unary_expression(expr))
                 .map(|((left, _), right)| {
                     Expression::Binary(
                         Box::new(left),
@@ -226,12 +250,15 @@ pub fn binary_and_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn binary_or_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            unary_expression(),
+            unary_expression(expr.clone()),
             this.then(just(Token::SyntaxToken("|")))
-                .then(unary_expression())
+                .then(unary_expression(expr))
                 .map(|((left, _), right)| {
                     Expression::Binary(
                         Box::new(left),
@@ -244,12 +271,15 @@ pub fn binary_or_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn binary_xor_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            unary_expression(),
+            unary_expression(expr.clone()),
             this.then(just(Token::SyntaxToken("^")))
-                .then(unary_expression())
+                .then(unary_expression(expr))
                 .map(|((left, _), right)| {
                     Expression::Binary(
                         Box::new(left),
@@ -262,13 +292,19 @@ pub fn binary_xor_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn bitwise_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     choice((
-        binary_and_expression().then(just(Token::SyntaxToken("&")).map(|_| BitwiseOperator::And)),
-        binary_or_expression().then(just(Token::SyntaxToken("|")).map(|_| BitwiseOperator::Or)),
-        binary_xor_expression().then(just(Token::SyntaxToken("^")).map(|_| BitwiseOperator::Xor)),
+        binary_and_expression(expr.clone())
+            .then(just(Token::SyntaxToken("&")).map(|_| BitwiseOperator::And)),
+        binary_or_expression(expr.clone())
+            .then(just(Token::SyntaxToken("|")).map(|_| BitwiseOperator::Or)),
+        binary_xor_expression(expr.clone())
+            .then(just(Token::SyntaxToken("^")).map(|_| BitwiseOperator::Xor)),
     ))
-    .then(unary_expression())
+    .then(unary_expression(expr))
     .map(|((left, operator), right)| {
         Expression::Binary(
             Box::new(left),

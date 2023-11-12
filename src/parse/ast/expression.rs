@@ -69,25 +69,33 @@ pub enum Expression {
 }
 
 pub fn template_arg_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateArgExpression, RichErr<'src, 'tokens>>
        + Clone {
-    expression().map(TemplateArgExpression)
+    expr.map(TemplateArgExpression)
 }
 
 pub fn argument_expression_list<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Expression>, RichErr<'src, 'tokens>> + Clone
 {
-    expression()
-        .separated_by(just(Token::SyntaxToken(",")))
+    expr.separated_by(just(Token::SyntaxToken(",")))
         .allow_trailing()
         .collect()
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
 }
 
 pub fn template_list<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateList, RichErr<'src, 'tokens>> + Clone
 {
-    template_arg_expression()
+    template_arg_expression(expr)
         .separated_by(just(Token::SyntaxToken(",")))
         .allow_trailing()
         .collect()
@@ -96,24 +104,33 @@ pub fn template_list<'tokens, 'src: 'tokens>(
 }
 
 pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
        + Clone {
     select!(Token::Ident(ident) => ident.to_owned())
-        .then(template_list().or_not())
+        .then(template_list(expr).or_not())
         .map(|(ident, templates)| TemplateElaboratedIdent(Ident(ident), templates))
 }
 
 pub fn call_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallExpression, RichErr<'src, 'tokens>> + Clone
 {
-    template_elaborated_ident()
-        .then(argument_expression_list())
+    template_elaborated_ident(expr.clone())
+        .then(argument_expression_list(expr))
         .map(|(ident, args)| CallExpression(CallPhrase(ident, ArgumentExpressionList(args))))
 }
 
 pub fn paren_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    expression().delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
+    expr.delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
 }
 
 pub fn literal<'tokens, 'src: 'tokens>(
@@ -122,16 +139,23 @@ pub fn literal<'tokens, 'src: 'tokens>(
 }
 
 pub fn primary_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     choice((
-        template_elaborated_ident().map(Expression::TemplateElaboratedIdent),
+        template_elaborated_ident(expr.clone()).map(Expression::TemplateElaboratedIdent),
         literal().map(Expression::Literal),
-        call_expression().map(Expression::CallExpression),
-        paren_expression().map(|expr| Expression::ParenExpression(Box::new(expr))),
+        call_expression(expr.clone()).map(Expression::CallExpression),
+        paren_expression(expr).map(|expr| Expression::ParenExpression(Box::new(expr))),
     ))
 }
 
-pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>() -> impl Parser<
+pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
     ComponentOrSwizzleSpecifier,
@@ -140,7 +164,7 @@ pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>() -> impl Parser<
     let swizzle_regex = Regex::new("^[rgba]{1,4}|[xyzw]{1,4}$").unwrap();
 
     recursive(|this| {
-        let index_expr = expression()
+        let index_expr = expr
             .delimited_by(just(Token::SyntaxToken("[")), just(Token::SyntaxToken("]")))
             .map(|expr| ComponentOrSwizzleSpecifierInner::IndexExpression(Box::new(expr)));
 
@@ -161,23 +185,23 @@ pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>() -> impl Parser<
 }
 
 pub fn singular_expression<'tokens, 'src: 'tokens>(
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    primary_expression()
-        .then(component_or_swizzle_specifier().or_not())
+    primary_expression(expr.clone())
+        .then(component_or_swizzle_specifier(expr).or_not())
         .map(|(primary, access)| Expression::Singular(Box::new(primary), access))
 }
 
 pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    custom(|f| {
-        dbg!(f.peek());
-        Ok(())
+    recursive(|expr| {
+        choice((
+            relational_expression(expr.clone()),
+            short_circuit_or_expression(expr.clone()),
+            short_circuit_and_expression(expr.clone()),
+            bitwise_expression(expr),
+        ))
     })
-    .then(choice((
-        relational_expression(),
-        short_circuit_or_expression(),
-        short_circuit_and_expression(),
-        bitwise_expression(),
-    )))
-    .map(|(a, b)| b)
 }
