@@ -140,10 +140,10 @@ fn primary_expression<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     choice((
-        template_elaborated_ident(expr.clone()).map(Expression::TemplateElaboratedIdent),
-        literal().map(Expression::Literal),
+        paren_expression(expr.clone()).map(|expr| Expression::ParenExpression(Box::new(expr))),
         call_expression(expr.clone()).map(Expression::CallExpression),
-        paren_expression(expr).map(|expr| Expression::ParenExpression(Box::new(expr))),
+        literal().map(Expression::Literal),
+        template_elaborated_ident(expr.clone()).map(Expression::TemplateElaboratedIdent),
     ))
 }
 
@@ -174,7 +174,7 @@ fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
             .then(select! {Token::Ident(ident) => ident.to_owned()})
             .map(|(_, ident)| ComponentOrSwizzleSpecifierInner::MemberAccess(MemberIdent(ident)));
 
-        choice((index_expr, swizzle_name, member_ident))
+        choice((swizzle_name, member_ident, index_expr))
             .then(this.or_not())
             .map(|(inner, extra)| ComponentOrSwizzleSpecifier(inner, Box::new(extra)))
     })
@@ -194,10 +194,34 @@ pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|expr| {
         choice((
+            bitwise_expression(expr.clone()),
+            short_circuit_and_expression(expr.clone())
+                .then(just(Token::SyntaxToken("&&")))
+                .then(relational_expression(expr.clone()))
+                .map(|((a, _), c)| {
+                    Expression::Binary(
+                        Box::new(a),
+                        BinaryOperator::ShortCircuit(
+                            relational_expression::ShortCircuitOperator::And,
+                        ),
+                        Box::new(c),
+                    )
+                }),
+            short_circuit_or_expression(expr.clone())
+                .then(just(Token::SyntaxToken("||")))
+                .then(relational_expression(expr.clone()))
+                .map(|((a, _), c)| {
+                    Expression::Binary(
+                        Box::new(a),
+                        BinaryOperator::ShortCircuit(
+                            relational_expression::ShortCircuitOperator::Or,
+                        ),
+                        Box::new(c),
+                    )
+                }),
             relational_expression(expr.clone()),
-            short_circuit_or_expression(expr.clone()),
-            short_circuit_and_expression(expr.clone()),
-            bitwise_expression(expr),
         ))
+        .memoized()
     })
+    .recover_with(skip_then_retry_until(any().ignored(), end()))
 }
