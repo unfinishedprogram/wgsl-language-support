@@ -117,7 +117,7 @@ pub fn additive_expression<'tokens, 'src: 'tokens>(
                 Token::SyntaxToken("+") => AdditiveOperator::Plus,
                 Token::SyntaxToken("-") => AdditiveOperator::Minus,
             })
-            .then(unary_expression())
+            .then(multiplicative_expression())
             .map(|((left, op), right)| {
                 Expression::Binary(
                     Box::new(left),
