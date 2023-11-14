@@ -1,1 +1,1 @@
-another_thing & even_another & other 
+x & (y ^ (z | w))
