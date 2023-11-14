@@ -92,7 +92,6 @@ pub fn relational_expression<'tokens, 'src: 'tokens>(
             }),
         shift_expression(expr),
     ))
-    .memoized()
 }
 
 pub fn shift_expression<'tokens, 'src: 'tokens>(
@@ -112,7 +111,6 @@ pub fn shift_expression<'tokens, 'src: 'tokens>(
             }),
         additive_expression(expr.clone()),
     ))
-    .memoized()
 }
 
 // DONE
@@ -182,21 +180,19 @@ pub fn short_circuit_or_expression<'tokens, 'src: 'tokens>(
         + Clone
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    recursive(|this| {
-        choice((
-            this.then(just(Token::SyntaxToken("||")))
-                .then(relational_expression(expr.clone()))
-                .map(|((left, _), right)| {
-                    Expression::Binary(
-                        Box::new(left),
-                        BinaryOperator::ShortCircuit(ShortCircuitOperator::Or),
-                        Box::new(right),
-                    )
-                }),
-            relational_expression(expr.clone()),
-        ))
-        .memoized()
-    })
+    relational_expression(expr.clone()).foldl(
+        just(Token::SyntaxToken("||"))
+            .then(relational_expression(expr.clone()))
+            .repeated()
+            .at_least(1),
+        |prev, (_, next)| {
+            Expression::Binary(
+                Box::new(prev),
+                BinaryOperator::ShortCircuit(ShortCircuitOperator::Or),
+                Box::new(next),
+            )
+        },
+    )
 }
 
 pub fn short_circuit_and_expression<'tokens, 'src: 'tokens>(
@@ -204,21 +200,19 @@ pub fn short_circuit_and_expression<'tokens, 'src: 'tokens>(
         + Clone
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    recursive(|this| {
-        choice((
-            this.then(just(Token::SyntaxToken("&&")))
-                .then(relational_expression(expr.clone()))
-                .map(|((left, _), right)| {
-                    Expression::Binary(
-                        Box::new(left),
-                        BinaryOperator::ShortCircuit(ShortCircuitOperator::And),
-                        Box::new(right),
-                    )
-                }),
-            relational_expression(expr.clone()),
-        ))
-        .memoized()
-    })
+    relational_expression(expr.clone()).foldl(
+        just(Token::SyntaxToken("&&"))
+            .then(relational_expression(expr.clone()))
+            .repeated()
+            .at_least(1),
+        |prev, (_, next)| {
+            Expression::Binary(
+                Box::new(prev),
+                BinaryOperator::ShortCircuit(ShortCircuitOperator::And),
+                Box::new(next),
+            )
+        },
+    )
 }
 
 pub fn binary_and_expression<'tokens, 'src: 'tokens>(

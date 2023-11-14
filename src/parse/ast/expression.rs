@@ -195,30 +195,8 @@ pub fn expression<'tokens, 'src: 'tokens>(
     recursive(|expr| {
         choice((
             bitwise_expression(expr.clone()),
-            short_circuit_and_expression(expr.clone())
-                .then(just(Token::SyntaxToken("&&")))
-                .then(relational_expression(expr.clone()))
-                .map(|((a, _), c)| {
-                    Expression::Binary(
-                        Box::new(a),
-                        BinaryOperator::ShortCircuit(
-                            relational_expression::ShortCircuitOperator::And,
-                        ),
-                        Box::new(c),
-                    )
-                }),
-            short_circuit_or_expression(expr.clone())
-                .then(just(Token::SyntaxToken("||")))
-                .then(relational_expression(expr.clone()))
-                .map(|((a, _), c)| {
-                    Expression::Binary(
-                        Box::new(a),
-                        BinaryOperator::ShortCircuit(
-                            relational_expression::ShortCircuitOperator::Or,
-                        ),
-                        Box::new(c),
-                    )
-                }),
+            short_circuit_and_expression(expr.clone()),
+            short_circuit_or_expression(expr.clone()),
             relational_expression(expr.clone()),
         ))
         .memoized()
