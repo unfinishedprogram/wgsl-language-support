@@ -1,1 +1,1 @@
-a > b || c < b || g > y
+thing(a + b - c)

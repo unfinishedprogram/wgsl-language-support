@@ -44,9 +44,6 @@ pub struct TemplateList(Vec<TemplateArgExpression>);
 pub struct TemplateArgExpression(Expression);
 
 #[derive(Debug, Clone)]
-pub struct CallExpression(CallPhrase);
-
-#[derive(Debug, Clone)]
 pub struct CallPhrase(TemplateElaboratedIdent, ArgumentExpressionList);
 
 #[derive(Debug, Clone)]
@@ -56,7 +53,7 @@ pub struct ArgumentExpressionList(Vec<Expression>);
 pub enum Expression {
     None,
     TemplateElaboratedIdent(TemplateElaboratedIdent),
-    CallExpression(CallExpression),
+    CallExpression(CallPhrase),
     Literal(Literal),
     ParenExpression(Box<Expression>),
     Unary(UnaryOperator, Box<Expression>),
@@ -114,11 +111,10 @@ fn call_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallExpression, RichErr<'src, 'tokens>> + Clone
-{
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallPhrase, RichErr<'src, 'tokens>> + Clone {
     template_elaborated_ident(expr.clone())
         .then(argument_expression_list(expr))
-        .map(|(ident, args)| CallExpression(CallPhrase(ident, ArgumentExpressionList(args))))
+        .map(|(ident, args)| CallPhrase(ident, ArgumentExpressionList(args)))
 }
 
 fn paren_expression<'tokens, 'src: 'tokens>(
