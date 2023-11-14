@@ -120,10 +120,10 @@ pub fn additive_expression<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     multiplicative_expression(expr.clone()).foldl(
-        choice((
-            just(Token::SyntaxToken("+")).map(|_| AdditiveOperator::Plus),
-            just(Token::SyntaxToken("-")).map(|_| AdditiveOperator::Minus),
-        ))
+        select! {
+            Token::SyntaxToken("+") => AdditiveOperator::Plus,
+            Token::SyntaxToken("-") => AdditiveOperator::Minus,
+        }
         .then(multiplicative_expression(expr.clone()))
         .repeated(),
         |prev, (op, next)| {
@@ -139,11 +139,11 @@ pub fn multiplicative_expression<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     unary_expression(expr.clone()).foldl(
-        choice((
-            just(Token::SyntaxToken("*")).map(|_| MultiplicativeOperator::Multiply),
-            just(Token::SyntaxToken("/")).map(|_| MultiplicativeOperator::Divide),
-            just(Token::SyntaxToken("%")).map(|_| MultiplicativeOperator::Modulo),
-        ))
+        select! {
+            Token::SyntaxToken("*") => MultiplicativeOperator::Multiply,
+            Token::SyntaxToken("/") => MultiplicativeOperator::Divide,
+            Token::SyntaxToken("%") => MultiplicativeOperator::Modulo,
+        }
         .then(unary_expression(expr.clone()))
         .repeated(),
         |prev, (op, next)| {
@@ -163,13 +163,13 @@ pub fn unary_expression<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
-        singular_expression(expr.clone()).or(choice((
-            just(Token::SyntaxToken("-")).map(|_| UnaryOperator::Negative),
-            just(Token::SyntaxToken("!")).map(|_| UnaryOperator::Not),
-            just(Token::SyntaxToken("~")).map(|_| UnaryOperator::BitNot),
-            just(Token::SyntaxToken("*")).map(|_| UnaryOperator::Deref),
-            just(Token::SyntaxToken("&")).map(|_| UnaryOperator::AddrOf),
-        ))
+        singular_expression(expr.clone()).or(select! {
+            Token::SyntaxToken("-") => UnaryOperator::Negative,
+            Token::SyntaxToken("!") => UnaryOperator::Not,
+            Token::SyntaxToken("~") => UnaryOperator::BitNot,
+            Token::SyntaxToken("*") => UnaryOperator::Deref,
+            Token::SyntaxToken("&") => UnaryOperator::AddrOf,
+        }
         .then(this)
         .map(|(op, expr)| Expression::Unary(op, Box::new(expr))))
     })
