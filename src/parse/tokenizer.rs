@@ -159,6 +159,7 @@ pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr
         just("+"),
         just("-"),
         just("*"),
+        just("~"),
     ));
 
     // Order is important here
