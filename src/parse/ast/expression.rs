@@ -1,7 +1,7 @@
 use chumsky::prelude::*;
 
+mod lhs_expression;
 mod relational_expression;
-use regex::Regex;
 
 use crate::parse::{literal::Literal, tokenizer::Token};
 
@@ -12,44 +12,37 @@ use self::relational_expression::{
 
 use super::{ParserInput, RichErr};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ComponentOrSwizzleSpecifierInner {
     IndexExpression(Box<Expression>),
-    MemberAccess(MemberIdent),
-    Swizzle(SwizzleName),
+    MemberAccess(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentOrSwizzleSpecifier(
     ComponentOrSwizzleSpecifierInner,
-    Box<Option<ComponentOrSwizzleSpecifier>>,
+    Option<Box<ComponentOrSwizzleSpecifier>>,
 );
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ident(String);
 
-#[derive(Debug, Clone)]
-pub struct MemberIdent(String);
-
-#[derive(Debug, Clone)]
-pub struct SwizzleName(String);
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TemplateElaboratedIdent(Ident, Option<TemplateList>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TemplateList(Vec<TemplateArgExpression>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TemplateArgExpression(Expression);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallPhrase(TemplateElaboratedIdent, ArgumentExpressionList);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArgumentExpressionList(Vec<Expression>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     None,
     TemplateElaboratedIdent(TemplateElaboratedIdent),
@@ -153,26 +146,18 @@ fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
     ComponentOrSwizzleSpecifier,
     RichErr<'src, 'tokens>,
 > + Clone {
-    let swizzle_regex = Regex::new("^[rgba]{1,4}|[xyzw]{1,4}$").unwrap();
-
     recursive(|this| {
         let index_expr = expr
             .delimited_by(just(Token::SyntaxToken("[")), just(Token::SyntaxToken("]")))
             .map(|expr| ComponentOrSwizzleSpecifierInner::IndexExpression(Box::new(expr)));
 
-        let swizzle_name = just(Token::SyntaxToken("."))
-            .then(
-                select! {Token::Ident(ident) if swizzle_regex.is_match(ident) => ident.to_owned()},
-            )
-            .map(|(_, ident)| ComponentOrSwizzleSpecifierInner::Swizzle(SwizzleName(ident)));
-
-        let member_ident = just(Token::SyntaxToken("."))
+        let member_ident_or_swizzle = just(Token::SyntaxToken("."))
             .then(select! {Token::Ident(ident) => ident.to_owned()})
-            .map(|(_, ident)| ComponentOrSwizzleSpecifierInner::MemberAccess(MemberIdent(ident)));
+            .map(|(_, ident)| ComponentOrSwizzleSpecifierInner::MemberAccess(ident));
 
-        choice((swizzle_name, member_ident, index_expr))
+        choice((member_ident_or_swizzle, index_expr))
             .then(this.or_not())
-            .map(|(inner, extra)| ComponentOrSwizzleSpecifier(inner, Box::new(extra)))
+            .map(|(inner, extra)| ComponentOrSwizzleSpecifier(inner, extra.map(Box::new)))
     })
 }
 

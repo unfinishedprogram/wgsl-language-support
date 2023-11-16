@@ -1,5 +1,6 @@
 use chumsky::prelude::*;
 pub mod expression;
+mod statement;
 use expression::Expression;
 
 pub type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<
@@ -21,9 +22,19 @@ pub struct Block {
     expressions: Vec<WithSpan<Expression>>,
 }
 
+pub enum Declaration {
+    Type,
+    TypeGenerator,
+    Value,
+    Variable,
+    Function,
+    FormalParameter,
+    Enumerant,
+}
+
 pub enum AstNode {
     Block(Block),
-    // Declaration(Declaration),
+    Declaration(Declaration),
     Expression(Expression),
 }
 

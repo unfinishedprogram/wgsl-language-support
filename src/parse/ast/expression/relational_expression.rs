@@ -6,26 +6,26 @@ use super::{
 };
 use chumsky::prelude::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MultiplicativeOperator {
     Multiply,
     Divide,
     Modulo,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdditiveOperator {
     Plus,
     Minus,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShiftOperator {
     ShiftLeft,
     ShiftRight,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOperator {
     Negative,
     Not,
@@ -34,20 +34,20 @@ pub enum UnaryOperator {
     AddrOf,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShortCircuitOperator {
     And,
     Or,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BitwiseOperator {
     And,
     Or,
     Xor,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelationalOperator {
     LessThan,
     GreaterThan,
@@ -57,7 +57,7 @@ pub enum RelationalOperator {
     NotEqual,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinaryOperator {
     Multiplicative(MultiplicativeOperator),
     Additive(AdditiveOperator),
