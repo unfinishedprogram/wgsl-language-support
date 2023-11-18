@@ -3,7 +3,7 @@ struct UnclosedCandidate {
     depth: u32,
 }
 
-pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
+fn find_templates(src: &str) -> Vec<(usize, usize)> {
     let chars: Vec<char> = src.chars().collect();
     let mut discovered_template_lists = vec![];
     let mut pending: Vec<UnclosedCandidate> = vec![];
@@ -106,14 +106,6 @@ pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
     }
 
     discovered_template_lists
-}
-
-pub fn extract_template_lists(src: &str, template_lists: Vec<(usize, usize)>) -> Vec<String> {
-    let chars: Vec<char> = src.chars().collect();
-    template_lists
-        .into_iter()
-        .map(|(start, end)| chars[start..=end].iter().collect())
-        .collect()
 }
 
 pub fn insert_template_delimiters(src: &str) -> String {

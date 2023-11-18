@@ -2,16 +2,15 @@ use chumsky::prelude::*;
 
 mod lhs_expression;
 pub mod relational_expression;
+use crate::front::token::Token;
 pub use lhs_expression::{lhs_expression, LHSExpression};
-
-use crate::parse::{literal::Literal, tokenizer::Token};
 
 use self::relational_expression::{
     bitwise_expression, relational_expression, short_circuit_and_expression,
     short_circuit_or_expression, BinaryOperator, UnaryOperator,
 };
-
 use super::{ParserInput, RichErr};
+use crate::front::token::Literal;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ComponentOrSwizzleSpecifierInner {
@@ -191,17 +190,17 @@ pub fn expression<'tokens, 'src: 'tokens>(
 
 #[cfg(test)]
 mod test {
-    use crate::parse::ast::expression::relational_expression::{
-        AdditiveOperator, MultiplicativeOperator,
+
+    use crate::front::{
+        ast::expression::relational_expression::{AdditiveOperator, MultiplicativeOperator},
+        token::{parse::tokenizer, template::insert_template_delimiters},
     };
 
     use super::*;
 
     fn parse_from_source(source: &'static str) -> Expression {
-        let templated = crate::parse::templates::insert_template_delimiters(source);
-        let tokens = crate::parse::tokenizer::tokenizer()
-            .parse(&templated)
-            .unwrap();
+        let templated = insert_template_delimiters(source);
+        let tokens = tokenizer().parse(&templated).unwrap();
 
         let ast = expression().parse(
             tokens

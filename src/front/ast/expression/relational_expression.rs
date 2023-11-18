@@ -1,9 +1,9 @@
-use crate::parse::tokenizer::Token;
-
 use super::{
     super::{ParserInput, RichErr},
     singular_expression, Expression,
 };
+
+use crate::front::token::Token;
 use chumsky::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

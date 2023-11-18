@@ -1,48 +1,7 @@
+use super::{Keyword, Literal, RichErr, Token};
+use crate::front::Span;
+
 use chumsky::prelude::*;
-
-use super::literal::Literal;
-
-type Span = SimpleSpan<usize>;
-type RichErr<'src> = extra::Err<Rich<'src, char, Span>>;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Token<'src> {
-    Literal(Literal),
-    Keyword(Keyword),
-    SyntaxToken(&'src str),
-    Ident(&'src str),
-    Trivia,
-    TemplateArgsStart,
-    TemplateArgsEnd,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Keyword {
-    Alias,
-    Break,
-    Case,
-    Const,
-    ConstAssert,
-    Continue,
-    Continuing,
-    Default,
-    Diagnostic,
-    Discard,
-    Else,
-    Enable,
-    Fn,
-    For,
-    If,
-    Let,
-    Loop,
-    Override,
-    Requires,
-    Return,
-    Struct,
-    Switch,
-    Var,
-    While,
-}
 
 pub fn keyword<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     use Keyword::*;

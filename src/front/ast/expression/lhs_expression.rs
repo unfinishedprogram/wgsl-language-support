@@ -1,11 +1,10 @@
 use chumsky::prelude::*;
 
-use crate::parse::{
-    ast::{ParserInput, RichErr},
-    tokenizer::Token,
-};
-
 use super::{component_or_swizzle_specifier, expression, ComponentOrSwizzleSpecifier};
+use crate::front::{
+    ast::{ParserInput, RichErr},
+    token::Token,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LHSUnaryOperator {
@@ -62,15 +61,21 @@ pub fn lhs_expression<'tokens, 'src: 'tokens>(
 mod tests {
     use std::assert_matches::assert_matches;
 
-    use crate::parse::ast::expression::ComponentOrSwizzleSpecifierInner;
+    use chumsky::{input::Input, Parser};
 
-    use super::*;
+    use crate::front::{
+        ast::expression::{
+            lhs_expression::LHSUnaryOperator, ComponentOrSwizzleSpecifier,
+            ComponentOrSwizzleSpecifierInner,
+        },
+        token::{parse::tokenizer, template::insert_template_delimiters},
+    };
+
+    use super::{lhs_expression, LHSExpression};
 
     fn parse_from_source(source: &'static str) -> LHSExpression {
-        let templated = crate::parse::templates::insert_template_delimiters(source);
-        let tokens = crate::parse::tokenizer::tokenizer()
-            .parse(&templated)
-            .unwrap();
+        let templated = insert_template_delimiters(source);
+        let tokens = tokenizer().parse(&templated).unwrap();
 
         let ast = lhs_expression().parse(
             tokens

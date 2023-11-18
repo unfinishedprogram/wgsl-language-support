@@ -1,19 +1,18 @@
-use crate::parse::{
-    ast::expression::relational_expression::{
-        AdditiveOperator, BitwiseOperator, MultiplicativeOperator, ShiftOperator,
-    },
-    tokenizer::{Keyword, Token},
-};
+use chumsky::prelude::*;
+
+use crate::front::token::Keyword;
 
 use super::{
     expression::{
-        expression, lhs_expression, relational_expression::BinaryOperator, Expression,
-        LHSExpression,
+        expression, lhs_expression,
+        relational_expression::{
+            AdditiveOperator, BinaryOperator, BitwiseOperator, MultiplicativeOperator,
+            ShiftOperator,
+        },
+        Expression, LHSExpression,
     },
-    ParserInput, RichErr,
+    ParserInput, RichErr, Token,
 };
-
-use chumsky::prelude::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Compound(Vec<Statement>),
