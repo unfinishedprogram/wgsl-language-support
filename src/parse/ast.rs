@@ -1,6 +1,6 @@
 use chumsky::prelude::*;
 pub mod expression;
-mod statement;
+pub mod statement;
 use expression::Expression;
 
 pub type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<

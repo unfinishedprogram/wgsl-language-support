@@ -1,7 +1,8 @@
 use chumsky::prelude::*;
 
 mod lhs_expression;
-mod relational_expression;
+pub mod relational_expression;
+pub use lhs_expression::{lhs_expression, LHSExpression};
 
 use crate::parse::{literal::Literal, tokenizer::Token};
 
@@ -168,7 +169,10 @@ fn singular_expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     primary_expression(expr.clone())
         .then(component_or_swizzle_specifier(expr).or_not())
-        .map(|(primary, access)| Expression::Singular(Box::new(primary), access))
+        .map(|(primary, access)| match access {
+            Some(access) => Expression::Singular(Box::new(primary), Some(access)),
+            None => primary,
+        })
 }
 
 pub fn expression<'tokens, 'src: 'tokens>(
@@ -183,4 +187,96 @@ pub fn expression<'tokens, 'src: 'tokens>(
         .memoized()
     })
     .recover_with(skip_then_retry_until(any().ignored(), end()))
+}
+
+#[cfg(test)]
+mod test {
+    use crate::parse::ast::expression::relational_expression::{
+        AdditiveOperator, MultiplicativeOperator,
+    };
+
+    use super::*;
+
+    fn parse_from_source(source: &'static str) -> Expression {
+        let templated = crate::parse::templates::insert_template_delimiters(source);
+        let tokens = crate::parse::tokenizer::tokenizer()
+            .parse(&templated)
+            .unwrap();
+
+        let ast = expression().parse(
+            tokens
+                .as_slice()
+                .spanned((source.len()..source.len()).into()),
+        );
+
+        ast.unwrap()
+    }
+
+    #[test]
+    fn binary_additive() {
+        let result = parse_from_source("1 + 2");
+        assert_eq!(
+            result,
+            Expression::Binary(
+                Box::new(Expression::Literal(Literal::Int("1".to_owned()))),
+                BinaryOperator::Additive(AdditiveOperator::Plus),
+                Box::new(Expression::Literal(Literal::Int("2".to_owned())))
+            )
+        );
+    }
+
+    #[test]
+    fn binary_additive_chain() {
+        let result = parse_from_source("1 + 2 + 3");
+        assert_eq!(
+            result,
+            Expression::Binary(
+                Box::new(Expression::Binary(
+                    Box::new(Expression::Literal(Literal::Int("1".to_owned()))),
+                    BinaryOperator::Additive(AdditiveOperator::Plus),
+                    Box::new(Expression::Literal(Literal::Int("2".to_owned())))
+                )),
+                BinaryOperator::Additive(AdditiveOperator::Plus),
+                Box::new(Expression::Literal(Literal::Int("3".to_owned())))
+            )
+        );
+    }
+
+    #[test]
+    fn binary_additive_operator_precedence() {
+        let result = parse_from_source("1 + 2 * 3");
+        assert_eq!(
+            result,
+            Expression::Binary(
+                Box::new(Expression::Literal(Literal::Int("1".to_owned()))),
+                BinaryOperator::Additive(AdditiveOperator::Plus),
+                Box::new(Expression::Binary(
+                    Box::new(Expression::Literal(Literal::Int("2".to_owned()))),
+                    BinaryOperator::Multiplicative(MultiplicativeOperator::Multiply),
+                    Box::new(Expression::Literal(Literal::Int("3".to_owned())))
+                ))
+            )
+        );
+    }
+
+    #[test]
+    fn test_complex_expression() {
+        let result = parse_from_source("1 + 2 * 3 + 4");
+        assert_eq!(
+            result,
+            Expression::Binary(
+                Box::new(Expression::Binary(
+                    Box::new(Expression::Literal(Literal::Int("1".to_owned()))),
+                    BinaryOperator::Additive(AdditiveOperator::Plus),
+                    Box::new(Expression::Binary(
+                        Box::new(Expression::Literal(Literal::Int("2".to_owned()))),
+                        BinaryOperator::Multiplicative(MultiplicativeOperator::Multiply),
+                        Box::new(Expression::Literal(Literal::Int("3".to_owned())))
+                    ))
+                )),
+                BinaryOperator::Additive(AdditiveOperator::Plus),
+                Box::new(Expression::Literal(Literal::Int("4".to_owned())))
+            )
+        );
+    }
 }

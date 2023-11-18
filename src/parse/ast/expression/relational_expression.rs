@@ -21,8 +21,8 @@ pub enum AdditiveOperator {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShiftOperator {
-    ShiftLeft,
-    ShiftRight,
+    Left,
+    Right,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,8 +102,8 @@ pub fn shift_expression<'tokens, 'src: 'tokens>(
     choice((
         unary_expression(expr.clone())
             .then(select! {
-                Token::SyntaxToken("<<") => ShiftOperator::ShiftLeft,
-                Token::SyntaxToken(">>") => ShiftOperator::ShiftRight,
+                Token::SyntaxToken("<<") => ShiftOperator::Left,
+                Token::SyntaxToken(">>") => ShiftOperator::Right,
             })
             .then(unary_expression(expr.clone()))
             .map(|((left, op), right)| {
