@@ -1,1 +1,1 @@
-thing(a + b - c)
+test = 5

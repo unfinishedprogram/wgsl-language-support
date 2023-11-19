@@ -1,9 +1,13 @@
-struct UnclosedCandidate {
-    position: usize,
-    depth: u32,
-}
+use crate::front::Span;
 
-fn find_templates(src: &str) -> Vec<(usize, usize)> {
+use super::Token;
+
+pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
+    struct UnclosedCandidate {
+        position: usize,
+        depth: u32,
+    }
+
     let chars: Vec<char> = src.chars().collect();
     let mut discovered_template_lists = vec![];
     let mut pending: Vec<UnclosedCandidate> = vec![];
@@ -127,4 +131,19 @@ pub fn insert_template_delimiters(src: &str) -> String {
             ch
         })
         .collect()
+}
+
+pub fn insert_template_tokens(source: &str, tokens: &mut [(Token, Span)]) {
+    let templates = find_templates(source);
+    for (token, span) in tokens {
+        for (start, end) in &templates {
+            if span.start == *start {
+                *token = Token::TemplateArgsStart;
+            } else if span.start == *end {
+                *token = Token::TemplateArgsEnd;
+            }
+        }
+    }
+
+    // Replace the characters in the template with special chars that are unlikely to be otherwise used
 }

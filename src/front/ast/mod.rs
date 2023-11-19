@@ -1,7 +1,9 @@
-use chumsky::prelude::*;
 pub mod expression;
 pub mod statement;
-use expression::Expression;
+
+use self::statement::{statement, Statement};
+use super::token::Token;
+use chumsky::prelude::*;
 
 type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<
     Token<'src>,
@@ -9,20 +11,7 @@ type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<
     &'tokens [(Token<'src>, SimpleSpan<usize>)],
 >;
 
-type RichErr<'src, 'tokens> = extra::Err<Rich<'tokens, Token<'src>, Span>>;
-
-use super::{span::WithSpan, token::Token};
-
-type Span = SimpleSpan<usize>;
-
-pub struct Ast<'src> {
-    pub src: &'src str,
-    pub nodes: Vec<WithSpan<AstNode>>,
-}
-
-pub struct Block {
-    expressions: Vec<WithSpan<Expression>>,
-}
+type RichErr<'src, 'tokens> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
 
 pub enum Declaration {
     Type,
@@ -34,14 +23,10 @@ pub enum Declaration {
     Enumerant,
 }
 
-pub enum AstNode {
-    Block(Block),
-    Declaration(Declaration),
-    Expression(Expression),
-}
-
 pub fn ast_parser<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<AstNode>, RichErr<'src, 'tokens>> {
-    todo()
-    // choice((function(), function_call())).repeated().collect()
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> {
+    statement()
+        .then_ignore(just(Token::Trivia).or_not())
+        .repeated()
+        .collect()
 }
