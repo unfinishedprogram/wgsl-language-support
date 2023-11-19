@@ -9,24 +9,41 @@ pub struct Module<'src> {
     pub source: &'src str,
     pub tokens: Vec<(Token<'src>, SimpleSpan)>,
     pub ast: Vec<Statement>,
+    // pub errors: Vec<ModuleError<'src>>,
 }
 
+#[derive(Clone)]
+pub enum ModuleError<'a> {
+    Tokenizer(Rich<'a, char>),
+    AstParser(Rich<'a, Token<'a>>),
+}
+
+// TODO: Better error handling
 impl<'src> Module<'src> {
     pub fn new(source: &'src str) -> Self {
-        let mut tokens = tokenizer().parse(source).unwrap();
-        insert_template_tokens(source, &mut tokens);
+        let mut errors: Vec<ModuleError> = vec![];
 
-        let ast = ast_parser()
+        let (mut tokens, tokenizer_errors) = tokenizer().parse(source).into_output_errors();
+
+        if let Some(tokens) = &mut tokens {
+            insert_template_tokens(source, tokens);
+        }
+
+        let tokens = tokens.unwrap_or_default();
+
+        let (ast, ast_errors) = ast_parser()
             .parse(
                 tokens
                     .as_slice()
                     .spanned((source.len()..source.len()).into()),
             )
-            .unwrap();
+            .into_output_errors();
+
+        let ast = ast.unwrap_or_default();
 
         Self {
-            source,
             tokens,
+            source,
             ast,
         }
     }
