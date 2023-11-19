@@ -25,8 +25,10 @@ pub enum Declaration {
 
 pub fn ast_parser<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> {
-    statement()
-        .then_ignore(just(Token::Trivia).or_not())
+    just(Token::Trivia)
+        .repeated()
+        .ignore_then(statement())
+        .then_ignore(just(Token::Trivia).repeated())
         .repeated()
         .collect()
 }

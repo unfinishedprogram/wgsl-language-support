@@ -1,7 +1,10 @@
-use wgsl_ast::front::module::Module;
+use wgsl_ast::front::module::{create_ast, tokenize};
 
 fn main() {
     let source = include_str!("test.wgsl");
-    let module = Module::new(source);
-    dbg!(module.ast);
+    let tokens = tokenize(source);
+    let ast = create_ast(&tokens);
+
+    dbg!(&tokens);
+    dbg!(&ast);
 }

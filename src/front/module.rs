@@ -12,39 +12,48 @@ pub struct Module<'src> {
     // pub errors: Vec<ModuleError<'src>>,
 }
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub enum ModuleError<'a> {
     Tokenizer(Rich<'a, char>),
     AstParser(Rich<'a, Token<'a>>),
 }
 
-// TODO: Better error handling
-impl<'src> Module<'src> {
-    pub fn new(source: &'src str) -> Self {
-        let mut errors: Vec<ModuleError> = vec![];
+#[derive(Debug)]
+pub struct TokenizationResult<'a> {
+    pub tokens: Vec<(Token<'a>, SimpleSpan)>,
+    pub errors: Vec<ModuleError<'a>>,
+}
 
-        let (mut tokens, tokenizer_errors) = tokenizer().parse(source).into_output_errors();
+#[derive(Debug)]
+pub struct AstResult<'a> {
+    pub ast: Vec<Statement>,
+    pub errors: Vec<ModuleError<'a>>,
+}
 
-        if let Some(tokens) = &mut tokens {
-            insert_template_tokens(source, tokens);
-        }
+pub fn tokenize(source: &str) -> TokenizationResult {
+    let (mut tokens, errors) = tokenizer().parse(source).into_output_errors();
+    if let Some(tokens) = &mut tokens {
+        insert_template_tokens(source, tokens);
+    }
 
-        let tokens = tokens.unwrap_or_default();
+    TokenizationResult {
+        tokens: tokens.unwrap_or_default(),
+        errors: errors.into_iter().map(ModuleError::Tokenizer).collect(),
+    }
+}
 
-        let (ast, ast_errors) = ast_parser()
-            .parse(
-                tokens
-                    .as_slice()
-                    .spanned((source.len()..source.len()).into()),
-            )
-            .into_output_errors();
+pub fn create_ast<'a>(source: &'a TokenizationResult) -> AstResult<'a> {
+    let (ast, errors) = ast_parser()
+        .parse(
+            source
+                .tokens
+                .as_slice()
+                .spanned((source.tokens.len()..source.tokens.len()).into()),
+        )
+        .into_output_errors();
 
-        let ast = ast.unwrap_or_default();
-
-        Self {
-            tokens,
-            source,
-            ast,
-        }
+    AstResult {
+        ast: ast.unwrap_or_default(),
+        errors: errors.into_iter().map(ModuleError::AstParser).collect(),
     }
 }
