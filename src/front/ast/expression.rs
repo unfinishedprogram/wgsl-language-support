@@ -75,7 +75,7 @@ fn argument_expression_list<'tokens, 'src: 'tokens>(
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
 }
 
-fn template_list<'tokens, 'src: 'tokens>(
+pub(crate) fn template_list<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -89,7 +89,7 @@ fn template_list<'tokens, 'src: 'tokens>(
         .map(TemplateList)
 }
 
-fn template_elaborated_ident<'tokens, 'src: 'tokens>(
+pub(crate) fn template_elaborated_ident<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
