@@ -2,13 +2,16 @@ use chumsky::prelude::*;
 
 use crate::front::{
     ast::{
-        expression::{expression, template_list, Expression, TemplateList},
+        expression::{
+            expression, template_elaborated_ident, template_list, Expression,
+            TemplateElaboratedIdent, TemplateList,
+        },
         ParserInput, RichErr,
     },
     token::{Keyword, Token},
 };
 
-use super::{optionally_typed_ident, OptionallyTypedIdent, Statement};
+use super::{optionally_typed_ident, OptionallyTypedIdent};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Declaration {
@@ -27,9 +30,14 @@ pub enum Declaration {
         ident: OptionallyTypedIdent,
         value: Expression,
     },
+
+    TypeAlias {
+        ident: String,
+        value: TemplateElaboratedIdent,
+    },
 }
 
-fn variable_or_value_declaration<'tokens, 'src: 'tokens>(
+fn variable_or_value_decl<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
     let variable_decl = just(Token::Keyword(Keyword::Var))
         .ignore_then(template_list(expression()).or_not())
@@ -58,7 +66,15 @@ fn variable_or_value_declaration<'tokens, 'src: 'tokens>(
     choice((variable_decl, module_const, local_const))
 }
 
+fn type_alias_decl<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+    just(Token::Keyword(Keyword::Alias))
+        .ignore_then(select!(Token::Ident(ident) => ident.to_owned()))
+        .then(just(Token::SyntaxToken("=")).ignore_then(template_elaborated_ident(expression())))
+        .map(|(ident, value)| Declaration::TypeAlias { ident, value })
+}
+
 pub fn declaration<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
-    choice((variable_or_value_declaration(),))
+    choice((variable_or_value_decl(), type_alias_decl()))
 }
