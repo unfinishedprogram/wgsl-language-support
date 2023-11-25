@@ -1,6 +1,10 @@
+pub mod declaration;
+
 use chumsky::prelude::*;
 
 use crate::front::token::Keyword;
+
+use self::declaration::{declaration, Declaration};
 
 use super::{
     expression::{
@@ -9,8 +13,7 @@ use super::{
             AdditiveOperator, BinaryOperator, BitwiseOperator, MultiplicativeOperator,
             ShiftOperator,
         },
-        template_elaborated_ident, template_list, Expression, LHSExpression,
-        TemplateElaboratedIdent, TemplateList,
+        template_elaborated_ident, Expression, LHSExpression, TemplateElaboratedIdent,
     },
     ParserInput, RichErr, Token,
 };
@@ -27,26 +30,7 @@ pub enum Statement {
         Vec<(Expression, Vec<Statement>)>,
         Option<Vec<Statement>>,
     ),
-    VariableOrValue(VariableOrValueStatement),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum VariableOrValueStatement {
-    Variable {
-        ident: OptionallyTypedIdent,
-        scope: Option<TemplateList>,
-        initial_value: Option<Expression>,
-    },
-
-    ModuleConstant {
-        ident: OptionallyTypedIdent,
-        value: Expression,
-    },
-
-    LocalConstant {
-        ident: OptionallyTypedIdent,
-        value: Expression,
-    },
+    Declaration(Declaration),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,37 +142,6 @@ fn optionally_typed_ident<'tokens, 'src: 'tokens>(
         .map(|(ident, type_specifier)| OptionallyTypedIdent(ident, type_specifier))
 }
 
-fn variable_or_value_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
-    let variable_decl = just(Token::Keyword(Keyword::Var))
-        .ignore_then(template_list(expression()).or_not())
-        .then(optionally_typed_ident(expression()))
-        .then(
-            just(Token::SyntaxToken("="))
-                .ignore_then(expression())
-                .or_not(),
-        )
-        .map(
-            |((scope, ident), initial_value)| VariableOrValueStatement::Variable {
-                scope,
-                ident,
-                initial_value,
-            },
-        );
-
-    let module_const = just(Token::Keyword(Keyword::Const))
-        .ignore_then(optionally_typed_ident(expression()))
-        .then(just(Token::SyntaxToken("=")).ignore_then(expression()))
-        .map(|(ident, value)| VariableOrValueStatement::ModuleConstant { ident, value });
-
-    let local_const = just(Token::Keyword(Keyword::Let))
-        .ignore_then(optionally_typed_ident(expression()))
-        .then(just(Token::SyntaxToken("=")).ignore_then(expression()))
-        .map(|(ident, value)| VariableOrValueStatement::LocalConstant { ident, value });
-
-    choice((variable_decl, module_const, local_const)).map(Statement::VariableOrValue)
-}
-
 pub fn statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
@@ -197,7 +150,7 @@ pub fn statement<'tokens, 'src: 'tokens>(
             inc_dec_statement(),
             return_statement(),
             if_statement(this.clone()),
-            variable_or_value_statement(),
+            declaration().map(Statement::Declaration),
         ))
         .memoized()
     })

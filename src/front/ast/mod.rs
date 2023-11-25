@@ -14,16 +14,6 @@ type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<
 
 type RichErr<'src, 'tokens> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
 
-pub enum Declaration {
-    Type,
-    TypeGenerator,
-    Value,
-    Variable,
-    Function,
-    FormalParameter,
-    Enumerant,
-}
-
 pub fn ast_parser<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> {
     just(Token::Trivia)
