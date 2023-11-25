@@ -66,7 +66,7 @@ pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src
         choice((decimal, hex)).map(|s: &str| Literal::Float(s.to_string()))
     };
 
-    choice((boolean_literal, int_literal, float_literal)).map(Token::Literal)
+    choice((float_literal, boolean_literal, int_literal)).map(Token::Literal)
 }
 
 pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
