@@ -35,6 +35,12 @@ pub enum Declaration {
         ident: String,
         value: TemplateElaboratedIdent,
     },
+
+    Struct {
+        // TODO: Add attributes to members
+        ident: String,
+        members: Vec<(String, TemplateElaboratedIdent)>,
+    },
 }
 
 fn variable_or_value_decl<'tokens, 'src: 'tokens>(
@@ -74,7 +80,25 @@ fn type_alias_decl<'tokens, 'src: 'tokens>(
         .map(|(ident, value)| Declaration::TypeAlias { ident, value })
 }
 
+fn struct_decl<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+    let struct_member = select!(Token::Ident(ident) => ident.to_owned())
+        .then(just(Token::SyntaxToken(":")).ignore_then(template_elaborated_ident(expression())))
+        .map(|(ident, value)| (ident, value));
+
+    let struct_body = struct_member
+        .separated_by(just(Token::SyntaxToken(",")))
+        .allow_trailing()
+        .collect()
+        .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")));
+
+    just(Token::Keyword(Keyword::Struct))
+        .ignore_then(select!(Token::Ident(ident) => ident.to_owned()))
+        .then(struct_body)
+        .map(|(ident, members)| Declaration::Struct { ident, members })
+}
+
 pub fn declaration<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
-    choice((variable_or_value_decl(), type_alias_decl()))
+    choice((variable_or_value_decl(), type_alias_decl(), struct_decl()))
 }
