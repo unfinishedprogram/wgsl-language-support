@@ -31,6 +31,7 @@ pub enum Statement {
         Option<Vec<Statement>>,
     ),
     Declaration(Declaration),
+    Discard,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,13 +90,22 @@ fn return_statement<'tokens, 'src: 'tokens>(
         .map(Statement::Return)
 }
 
+fn discard_statement<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    just(Token::Keyword(Keyword::Discard)).map(|_| Statement::Discard)
+}
+
 fn compound_statement<'tokens, 'src: 'tokens>(
     stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> + Clone
 {
-    stmt.repeated()
+    just(Token::Trivia)
+        .or_not()
+        .ignore_then(stmt)
+        .then_ignore(just(Token::Trivia).or_not())
+        .repeated()
         .collect()
         .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")))
 }
@@ -151,6 +161,7 @@ pub fn statement<'tokens, 'src: 'tokens>(
             assignment_statement().then_ignore(semi.clone()),
             inc_dec_statement().then_ignore(semi.clone()),
             return_statement().then_ignore(semi.clone()),
+            discard_statement().then_ignore(semi.clone()),
             if_statement(this.clone()),
             declaration(this.clone()).map(Statement::Declaration),
         ))
