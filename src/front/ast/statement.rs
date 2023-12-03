@@ -144,13 +144,15 @@ fn optionally_typed_ident<'tokens, 'src: 'tokens>(
 
 pub fn statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    // TODO: Make semicolon shared parser.
+    let semi = just(Token::SyntaxToken(";"));
     recursive(|this| {
         choice((
-            assignment_statement(),
-            inc_dec_statement(),
-            return_statement(),
+            assignment_statement().then_ignore(semi.clone()),
+            inc_dec_statement().then_ignore(semi.clone()),
+            return_statement().then_ignore(semi.clone()),
             if_statement(this.clone()),
-            declaration().map(Statement::Declaration),
+            declaration(this.clone()).map(Statement::Declaration),
         ))
         .memoized()
     })
