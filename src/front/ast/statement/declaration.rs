@@ -48,7 +48,7 @@ pub enum Declaration {
         attributes: Vec<Attribute>,
         ident: String,
         parameters: Vec<FunctionParameter>,
-        return_type: Option<TemplateElaboratedIdent>,
+        return_type: Option<(Vec<Attribute>, TemplateElaboratedIdent)>,
         body: Vec<Statement>,
     },
 }
@@ -163,7 +163,7 @@ fn function_decl<'tokens, 'src: 'tokens>(
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")));
 
     let return_type = just(Token::SyntaxToken("->"))
-        .ignore_then(template_elaborated_ident(expression()))
+        .ignore_then(Attribute::list_parser().then(template_elaborated_ident(expression())))
         .or_not();
 
     Attribute::list_parser()
