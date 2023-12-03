@@ -17,6 +17,7 @@ use super::{compound_statement, optionally_typed_ident, OptionallyTypedIdent, St
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Declaration {
     Variable {
+        attributes: Vec<Attribute>,
         ident: OptionallyTypedIdent,
         scope: Option<TemplateList>,
         initial_value: Option<Expression>,
@@ -38,35 +39,55 @@ pub enum Declaration {
     },
 
     Struct {
-        // TODO: Add attributes to members
+        attributes: Vec<Attribute>,
         ident: String,
-        members: Vec<(String, TemplateElaboratedIdent)>,
+        members: Vec<StructMember>,
     },
 
     Function {
         attributes: Vec<Attribute>,
         ident: String,
-        parameters: Vec<(Vec<Attribute>, String, TemplateElaboratedIdent)>,
+        parameters: Vec<FunctionParameter>,
         return_type: Option<TemplateElaboratedIdent>,
         body: Vec<Statement>,
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructMember {
+    attributes: Vec<Attribute>,
+    ident: String,
+    value: TemplateElaboratedIdent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionParameter {
+    attributes: Vec<Attribute>,
+    ident: String,
+    value: TemplateElaboratedIdent,
+}
+
 fn variable_or_value_decl<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
-    let variable_decl = just(Token::Keyword(Keyword::Var))
-        .ignore_then(template_list(expression()).or_not())
-        .then(optionally_typed_ident(expression()))
+    let variable_decl = Attribute::list_parser()
         .then(
-            just(Token::SyntaxToken("="))
-                .ignore_then(expression())
-                .or_not(),
+            just(Token::Keyword(Keyword::Var))
+                .ignore_then(template_list(expression()).or_not())
+                .then(optionally_typed_ident(expression()))
+                .then(
+                    just(Token::SyntaxToken("="))
+                        .ignore_then(expression())
+                        .or_not(),
+                ),
         )
-        .map(|((scope, ident), initial_value)| Declaration::Variable {
-            scope,
-            ident,
-            initial_value,
-        });
+        .map(
+            |(attributes, ((scope, ident), initial_value))| Declaration::Variable {
+                attributes,
+                scope,
+                ident,
+                initial_value,
+            },
+        );
 
     let module_const = just(Token::Keyword(Keyword::Const))
         .ignore_then(optionally_typed_ident(expression()))
@@ -91,9 +112,15 @@ fn type_alias_decl<'tokens, 'src: 'tokens>(
 
 fn struct_decl<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
-    let struct_member = select!(Token::Ident(ident) => ident.to_owned())
-        .then(just(Token::SyntaxToken(":")).ignore_then(template_elaborated_ident(expression())))
-        .map(|(ident, value)| (ident, value));
+    let struct_member = Attribute::list_parser()
+        .then(select!(Token::Ident(ident) => ident.to_owned()).then(
+            just(Token::SyntaxToken(":")).ignore_then(template_elaborated_ident(expression())),
+        ))
+        .map(|(attributes, (ident, value))| StructMember {
+            attributes,
+            ident,
+            value,
+        });
 
     let struct_body = struct_member
         .separated_by(just(Token::SyntaxToken(",")))
@@ -101,10 +128,17 @@ fn struct_decl<'tokens, 'src: 'tokens>(
         .collect()
         .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")));
 
-    just(Token::Keyword(Keyword::Struct))
-        .ignore_then(select!(Token::Ident(ident) => ident.to_owned()))
-        .then(struct_body)
-        .map(|(ident, members)| Declaration::Struct { ident, members })
+    Attribute::list_parser()
+        .then(
+            just(Token::Keyword(Keyword::Struct))
+                .ignore_then(select!(Token::Ident(ident) => ident.to_owned()))
+                .then(struct_body),
+        )
+        .map(|(attributes, (ident, members))| Declaration::Struct {
+            attributes,
+            ident,
+            members,
+        })
 }
 
 fn function_decl<'tokens, 'src: 'tokens>(
@@ -116,7 +150,11 @@ fn function_decl<'tokens, 'src: 'tokens>(
         .then(select!(Token::Ident(ident) => ident.to_owned()).then(
             just(Token::SyntaxToken(":")).ignore_then(template_elaborated_ident(expression())),
         ))
-        .map(|(attr, (ident, value))| (attr, ident, value));
+        .map(|(attributes, (ident, value))| FunctionParameter {
+            attributes,
+            ident,
+            value,
+        });
 
     let param_list = param
         .separated_by(just(Token::SyntaxToken(",")))
