@@ -18,6 +18,28 @@ pub enum ModuleError<'a> {
     AstParser(Rich<'a, Token<'a>>),
 }
 
+impl ModuleError<'_> {
+    pub fn span(&self) -> &SimpleSpan {
+        match self {
+            ModuleError::Tokenizer(err) => err.span(),
+            ModuleError::AstParser(err) => err.span(),
+        }
+    }
+
+    pub fn message(&self) -> String {
+        match self {
+            ModuleError::Tokenizer(err) => err.to_string(),
+            ModuleError::AstParser(err) => {
+                format!(
+                    "Expected: '{:?}', but got: '{:?}'",
+                    err.expected().collect::<Vec<_>>(),
+                    err.found()
+                )
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct TokenizationResult<'a> {
     pub tokens: Vec<(Token<'a>, SimpleSpan)>,

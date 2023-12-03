@@ -6,6 +6,7 @@ rust-version = "1.73"
 edition = "2021"
 
 [dependencies]
+ariadne = "0.3.0"
 backtrace-on-stack-overflow = "0.3.0"
 chumsky = { version = "1.0.0-alpha.6", features = ["regex", "memoization"] }
 regex = "1.10.2"
