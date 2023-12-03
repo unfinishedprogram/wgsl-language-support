@@ -2,6 +2,9 @@ use chumsky::{error::Rich, extra};
 
 use super::Span;
 
+mod ident;
+pub use ident::ident;
+
 pub mod parse;
 pub mod template;
 

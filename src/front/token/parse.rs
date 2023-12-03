@@ -1,4 +1,4 @@
-use super::{Keyword, Literal, RichErr, Token};
+use super::{ident, Keyword, Literal, RichErr, Token};
 use crate::front::Span;
 
 use chumsky::prelude::*;
@@ -130,10 +130,6 @@ pub fn template_delimiter<'src>() -> impl Parser<'src, &'src str, Token<'src>, R
         just('⋖').map(|_| Token::TemplateArgsStart),
         just('⋗').map(|_| Token::TemplateArgsEnd),
     ))
-}
-
-pub fn ident<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
-    text::unicode::ident().map(Token::Ident)
 }
 
 pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
