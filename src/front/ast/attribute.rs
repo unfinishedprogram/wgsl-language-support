@@ -156,7 +156,7 @@ impl WorkgroupSize {
                 .map(|((x, y), z)| Self::D3(x, y, z)),
         );
 
-        just(Token::SyntaxToken("(")).ignore_then(choice((d3, d2, d1)))
+        choice((d3, d2, d1))
     }
 }
 
