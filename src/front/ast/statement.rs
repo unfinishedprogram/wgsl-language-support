@@ -27,6 +27,9 @@ pub enum Statement {
     Increment(LHSExpression),
     Decrement(LHSExpression),
     Return(Option<Expression>),
+    Continue,
+    Break,
+    BreakIf(Expression),
     If(
         (Expression, Vec<Statement>),
         Vec<(Expression, Vec<Statement>)>,
@@ -118,6 +121,25 @@ fn discard_statement<'tokens, 'src: 'tokens>(
     just(Token::Keyword(Keyword::Discard))
         .map(|_| Statement::Discard)
         .labelled("discard statement")
+}
+
+fn break_statement<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    let just_break = just(Token::Keyword(Keyword::Break)).map(|_| Statement::Break);
+
+    let break_if = just(Token::Keyword(Keyword::Break))
+        .ignore_then(just(Token::Keyword(Keyword::If)))
+        .ignore_then(expression())
+        .map(Statement::BreakIf);
+
+    choice((break_if, just_break)).labelled("break statement")
+}
+
+fn continue_statement<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    just(Token::Keyword(Keyword::Continue))
+        .map(|_| Statement::Continue)
+        .labelled("continue statement")
 }
 
 fn compound_statement<'tokens, 'src: 'tokens>(
@@ -281,6 +303,9 @@ pub fn statement<'tokens, 'src: 'tokens>(
                 assignment_statement(),
                 return_statement(),
                 discard_statement(),
+                break_statement(),
+                continue_statement(),
+                break_statement(),
             ))
             .then_ignore(just(Token::SyntaxToken(";"))),
         ))
