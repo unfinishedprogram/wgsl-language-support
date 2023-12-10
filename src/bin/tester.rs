@@ -2,14 +2,15 @@ use ariadne::{ColorGenerator, Label, Report, Source};
 use wgsl_ast::front::module::{create_ast, tokenize};
 fn main() {
     let source = include_str!("test.wgsl");
-    let tokens = tokenize(source);
-    let ast = create_ast(&tokens);
+    let token_result = tokenize(source);
+    let ast_result = create_ast(&token_result);
 
-    dbg!(tokens.tokens.len());
+    dbg!(token_result.tokens.len());
+    dbg!(&ast_result.ast);
+
     let mut colors = ColorGenerator::new();
-    dbg!(&ast);
 
-    for err in ast.errors {
+    for err in ast_result.errors {
         Report::build(ariadne::ReportKind::Error, "test.wgsl", err.span().start)
             .with_label(
                 Label::new(("test.wgsl", err.span().into_range()))
