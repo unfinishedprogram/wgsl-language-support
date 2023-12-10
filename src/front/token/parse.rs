@@ -3,38 +3,6 @@ use crate::front::Span;
 
 use chumsky::prelude::*;
 
-pub fn keyword<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
-    use Keyword::*;
-
-    choice((
-        just("alias").map(|_| Alias),
-        just("break").map(|_| Break),
-        just("case").map(|_| Case),
-        just("const").map(|_| Const),
-        just("constAssert").map(|_| ConstAssert),
-        just("continue").map(|_| Continue),
-        just("continuing").map(|_| Continuing),
-        just("default").map(|_| Default),
-        just("diagnostic").map(|_| Diagnostic),
-        just("discard").map(|_| Discard),
-        just("else").map(|_| Else),
-        just("enable").map(|_| Enable),
-        just("fn").map(|_| Fn),
-        just("for").map(|_| For),
-        just("if").map(|_| If),
-        just("let").map(|_| Let),
-        just("loop").map(|_| Loop),
-        just("override").map(|_| Override),
-        just("requires").map(|_| Requires),
-        just("return").map(|_| Return),
-        just("struct").map(|_| Struct),
-        just("switch").map(|_| Switch),
-        just("var").map(|_| Var),
-        just("while").map(|_| While),
-    ))
-    .map(Token::Keyword)
-}
-
 pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     let boolean_literal = choice((
         just("true").map(|_| Literal::Boolean(true)),
@@ -141,7 +109,7 @@ pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>
 }
 
 pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
-    let token = choice((trivia(), keyword(), literal(), syntax_token(), ident()));
+    let token = choice((trivia(), syntax_token(), literal(), ident()));
     token
         // Add spans to all tokens
         .map_with(|tok, e| (tok, e.span()))

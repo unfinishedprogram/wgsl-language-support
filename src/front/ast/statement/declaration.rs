@@ -156,11 +156,8 @@ fn function_decl<'tokens, 'src: 'tokens>(
             value,
         });
 
-    // let single_param = param.clone().then(just(Token::SyntaxToken(",")).or_not());
-    // let multiple_param = param.then()
-
     let param_list = param
-        .separated_by(just(Token::SyntaxToken(",")).lazy())
+        .separated_by(just(Token::SyntaxToken(",")))
         .allow_trailing()
         .collect()
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")));

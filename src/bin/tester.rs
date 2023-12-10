@@ -6,6 +6,7 @@ fn main() {
     let ast_result = create_ast(&token_result);
 
     dbg!(token_result.tokens.len());
+    // dbg!(&token_result.tokens);
     dbg!(&ast_result.ast);
 
     let mut colors = ColorGenerator::new();

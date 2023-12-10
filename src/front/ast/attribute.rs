@@ -109,6 +109,7 @@ impl DiagnosticControl {
             .then_ignore(just(Token::SyntaxToken(",")).or_not())
             .then_ignore(just(Token::SyntaxToken(")")))
             .map(|(severity, name)| Self { severity, name })
+            .labelled("diagnostic_control")
     }
 }
 
@@ -141,7 +142,7 @@ impl WorkgroupSize {
                 .then_ignore(just(Token::SyntaxToken(",")))
                 .then(expression())
                 .then_ignore(just(Token::SyntaxToken(",")).or_not())
-                .then_ignore(just(Token::SyntaxToken("(")))
+                .then_ignore(just(Token::SyntaxToken(")")))
                 .map(|(x, y)| Self::D2(x, y)),
         );
 
@@ -152,11 +153,11 @@ impl WorkgroupSize {
                 .then_ignore(just(Token::SyntaxToken(",")))
                 .then(expression())
                 .then_ignore(just(Token::SyntaxToken(",")).or_not())
-                .then_ignore(just(Token::SyntaxToken("(")))
+                .then_ignore(just(Token::SyntaxToken(")")))
                 .map(|((x, y), z)| Self::D3(x, y, z)),
         );
 
-        choice((d3, d2, d1))
+        choice((d3, d2, d1)).labelled("workgroup_size")
     }
 }
 

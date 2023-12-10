@@ -22,12 +22,12 @@ use super::{
 pub enum Statement {
     Trivia,
     Compound(Vec<Statement>),
-    ContinuingCompound(Vec<Statement>),
     Assignment(LHSExpression, AssignmentOperator, Expression),
     Increment(LHSExpression),
     Decrement(LHSExpression),
     Return(Option<Expression>),
     Continue,
+    Continuing(Vec<Attribute>, Vec<Statement>),
     Break,
     BreakIf(Expression),
     If(
@@ -230,9 +230,7 @@ fn while_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     Attribute::list_parser()
         .then_ignore(just(Token::Keyword(Keyword::While)))
-        .then(
-            expression().delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")"))),
-        )
+        .then(expression())
         .then(compound_statement(stmt.clone()))
         .map(|((attributes, expression), body)| Statement::While {
             attributes,
@@ -240,6 +238,18 @@ fn while_statement<'tokens, 'src: 'tokens>(
             body,
         })
         .labelled("while statement")
+}
+
+fn continuing_statement<'tokens, 'src: 'tokens>(
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    Attribute::list_parser()
+        .then_ignore(just(Token::Keyword(Keyword::Continuing)))
+        .then(compound_statement(stmt.clone()))
+        .map(|(attributes, body)| Statement::Continuing(attributes, body))
+        .labelled("continuing statement")
 }
 
 fn if_statement<'tokens, 'src: 'tokens>(
@@ -297,6 +307,7 @@ pub fn statement<'tokens, 'src: 'tokens>(
             for_statement(this.clone()),
             while_statement(this.clone()),
             declaration(this.clone()).map(Statement::Declaration),
+            continuing_statement(this.clone()),
             choice((
                 inc_dec_statement(),
                 call_expression(expression()).map(Statement::FuncCall),
