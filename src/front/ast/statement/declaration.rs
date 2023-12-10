@@ -67,7 +67,7 @@ pub struct FunctionParameter {
     value: TemplateElaboratedIdent,
 }
 
-fn variable_or_value_decl<'tokens, 'src: 'tokens>(
+pub fn variable_or_value_decl<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
     let variable_decl = Attribute::list_parser()
         .then(

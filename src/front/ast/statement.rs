@@ -4,9 +4,10 @@ use chumsky::prelude::*;
 
 use crate::front::token::Keyword;
 
-use self::declaration::{declaration, Declaration};
+use self::declaration::{declaration, variable_or_value_decl, Declaration};
 
 use super::{
+    attribute::Attribute,
     expression::{
         call_expression, core_lhs_expression, expression, lhs_expression,
         relational_expression::{
@@ -34,6 +35,19 @@ pub enum Statement {
     Declaration(Declaration),
     FuncCall(CallPhrase),
     Discard,
+    Loop {
+        loop_attributes: Vec<Attribute>,
+        body_attributes: Vec<Attribute>,
+        body: Vec<Statement>,
+    },
+
+    For {
+        attributes: Vec<Attribute>,
+        init: Box<Option<Statement>>,
+        expression: Box<Option<Expression>>,
+        update: Box<Option<Statement>>,
+        body: Vec<Statement>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,6 +132,70 @@ fn compound_statement<'tokens, 'src: 'tokens>(
         .labelled("compound statement")
 }
 
+fn loop_statement<'tokens, 'src: 'tokens>(
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    let loop_attributes = Attribute::list_parser();
+    let body_attributes = Attribute::list_parser();
+
+    loop_attributes
+        .then(
+            just(Token::Keyword(Keyword::Loop))
+                .ignore_then(body_attributes.then(compound_statement(stmt.clone()))),
+        )
+        .map(
+            |(loop_attributes, (body_attributes, body))| Statement::Loop {
+                loop_attributes,
+                body_attributes,
+                body,
+            },
+        )
+        .labelled("loop statement")
+}
+
+fn for_statement<'tokens, 'src: 'tokens>(
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    let init = choice((
+        variable_or_value_decl().map(Statement::Declaration),
+        assignment_statement(),
+        inc_dec_statement(),
+        call_expression(expression()).map(Statement::FuncCall),
+    ));
+
+    let update = choice((
+        call_expression(expression()).map(Statement::FuncCall),
+        assignment_statement(),
+        inc_dec_statement(),
+    ));
+
+    let header = init
+        .or_not()
+        .then_ignore(just(Token::SyntaxToken(";")))
+        .then(expression().or_not())
+        .then_ignore(just(Token::SyntaxToken(";")))
+        .then(update.or_not())
+        .map(|((a, b), c)| (a, b, c));
+
+    Attribute::list_parser()
+        .then_ignore(just(Token::Keyword(Keyword::For)))
+        .then(header.delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")"))))
+        .then(compound_statement(stmt))
+        .map(
+            |((attributes, (init, expression, update)), body)| Statement::For {
+                attributes,
+                init: Box::new(init),
+                expression: Box::new(expression),
+                update: Box::new(update),
+                body,
+            },
+        )
+}
+
 fn if_statement<'tokens, 'src: 'tokens>(
     stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
         + Clone
@@ -169,6 +247,8 @@ pub fn statement<'tokens, 'src: 'tokens>(
                 .map(|_| Statement::Trivia)
                 .labelled("trivia"),
             if_statement(this.clone()),
+            loop_statement(this.clone()),
+            for_statement(this.clone()),
             declaration(this.clone()).map(Statement::Declaration),
             choice((
                 inc_dec_statement(),
