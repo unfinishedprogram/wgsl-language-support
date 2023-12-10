@@ -79,8 +79,6 @@ pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr
         just(">="),
         just("&&"),
         just("||"),
-        just("<<"),
-        just(">>"),
         just("->"),
         just("=>"),
         just("++"),
@@ -126,13 +124,6 @@ pub fn syntax_token<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr
     choice((l3, l2, l1)).map(Token::SyntaxToken)
 }
 
-pub fn template_delimiter<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
-    choice((
-        just('⋖').map(|_| Token::TemplateArgsStart),
-        just('⋗').map(|_| Token::TemplateArgsEnd),
-    ))
-}
-
 pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     let line_comment = just("//")
         .then(none_of('\n').repeated())
@@ -150,15 +141,7 @@ pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>
 }
 
 pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
-    let token = choice((
-        trivia(),
-        keyword(),
-        literal(),
-        template_delimiter(),
-        syntax_token(),
-        ident(),
-    ));
-
+    let token = choice((trivia(), keyword(), literal(), syntax_token(), ident()));
     token
         // Add spans to all tokens
         .map_with(|tok, e| (tok, e.span()))

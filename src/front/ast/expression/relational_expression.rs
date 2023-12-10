@@ -99,16 +99,21 @@ pub fn shift_expression<'tokens, 'src: 'tokens>(
         + Clone
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
+    let basic_shift = choice((
+        just(Token::SyntaxToken("<"))
+            .then_ignore(just(Token::SyntaxToken("<")))
+            .map(|_| ShiftOperator::Left),
+        just(Token::SyntaxToken(">"))
+            .then_ignore(just(Token::SyntaxToken(">")))
+            .map(|_| ShiftOperator::Right),
+    ))
+    .map(BinaryOperator::Shift);
+
     choice((
         unary_expression(expr.clone())
-            .then(select! {
-                Token::SyntaxToken("<<") => ShiftOperator::Left,
-                Token::SyntaxToken(">>") => ShiftOperator::Right,
-            })
+            .then(basic_shift)
             .then(unary_expression(expr.clone()))
-            .map(|((left, op), right)| {
-                Expression::Binary(Box::new(left), BinaryOperator::Shift(op), Box::new(right))
-            }),
+            .map(|((left, op), right)| Expression::Binary(Box::new(left), op, Box::new(right))),
         additive_expression(expr.clone()),
     ))
 }
