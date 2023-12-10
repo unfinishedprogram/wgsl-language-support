@@ -156,8 +156,11 @@ fn function_decl<'tokens, 'src: 'tokens>(
             value,
         });
 
+    // let single_param = param.clone().then(just(Token::SyntaxToken(",")).or_not());
+    // let multiple_param = param.then()
+
     let param_list = param
-        .separated_by(just(Token::SyntaxToken(",")))
+        .separated_by(just(Token::SyntaxToken(",")).lazy())
         .allow_trailing()
         .collect()
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")));
@@ -198,4 +201,5 @@ pub fn declaration<'tokens, 'src: 'tokens>(
         struct_decl(),
         function_decl(stmt),
     ))
+    .labelled("declaration")
 }

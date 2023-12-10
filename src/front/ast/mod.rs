@@ -16,10 +16,9 @@ type RichErr<'src, 'tokens> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>
 
 pub fn ast_parser<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> {
-    just(Token::Trivia)
-        .repeated()
-        .ignore_then(statement())
-        .then_ignore(just(Token::Trivia).repeated())
+    statement()
+        .then_ignore(just(Token::SyntaxToken(";")).or_not())
+        // .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
         .collect()
 }

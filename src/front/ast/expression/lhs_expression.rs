@@ -26,13 +26,14 @@ pub fn core_lhs_expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'src, 'tokens>> + Clone
 {
     choice((
-        select! {Token::Ident(ident) => LHSExpression::Ident(ident.to_owned())},
+        select! {Token::Ident(ident) => LHSExpression::Ident(ident.to_owned())}.labelled("ident"),
         lhs_expression
             .clone()
             .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
             .map(|expr| LHSExpression::Paren(Box::new(expr))),
     ))
     .memoized()
+    .labelled("core LHS expression")
 }
 
 pub fn lhs_expression<'tokens, 'src: 'tokens>(
@@ -55,6 +56,7 @@ pub fn lhs_expression<'tokens, 'src: 'tokens>(
         ))
         .memoized()
     })
+    .labelled("LHS expression")
 }
 
 #[cfg(test)]

@@ -8,17 +8,18 @@ use self::declaration::{declaration, Declaration};
 
 use super::{
     expression::{
-        expression, lhs_expression,
+        call_expression, core_lhs_expression, expression, lhs_expression,
         relational_expression::{
             AdditiveOperator, BinaryOperator, BitwiseOperator, MultiplicativeOperator,
             ShiftOperator,
         },
-        template_elaborated_ident, Expression, LHSExpression, TemplateElaboratedIdent,
+        template_elaborated_ident, CallPhrase, Expression, LHSExpression, TemplateElaboratedIdent,
     },
     ParserInput, RichErr, Token,
 };
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
+    Trivia,
     Compound(Vec<Statement>),
     ContinuingCompound(Vec<Statement>),
     Assignment(LHSExpression, AssignmentOperator, Expression),
@@ -31,6 +32,7 @@ pub enum Statement {
         Option<Vec<Statement>>,
     ),
     Declaration(Declaration),
+    FuncCall(CallPhrase),
     Discard,
 }
 
@@ -67,11 +69,12 @@ fn assignment_statement<'tokens, 'src: 'tokens>(
         .then(assignment_operator())
         .then(expression())
         .map(|((lhs, operator), rhs)| Statement::Assignment(lhs, operator, rhs))
+        .labelled("assignment statement")
 }
 
 fn inc_dec_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
-    lhs_expression()
+    core_lhs_expression(lhs_expression())
         .then(choice((
             just(Token::SyntaxToken("++")),
             just(Token::SyntaxToken("--")),
@@ -81,6 +84,7 @@ fn inc_dec_statement<'tokens, 'src: 'tokens>(
             Token::SyntaxToken("--") => Statement::Decrement(lhs),
             _ => unreachable!(),
         })
+        .labelled("increment/decrement statement")
 }
 
 fn return_statement<'tokens, 'src: 'tokens>(
@@ -88,11 +92,14 @@ fn return_statement<'tokens, 'src: 'tokens>(
     just(Token::Keyword(Keyword::Return))
         .ignore_then(expression())
         .map(Statement::Return)
+        .labelled("return statement")
 }
 
 fn discard_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
-    just(Token::Keyword(Keyword::Discard)).map(|_| Statement::Discard)
+    just(Token::Keyword(Keyword::Discard))
+        .map(|_| Statement::Discard)
+        .labelled("discard statement")
 }
 
 fn compound_statement<'tokens, 'src: 'tokens>(
@@ -108,6 +115,7 @@ fn compound_statement<'tokens, 'src: 'tokens>(
         .repeated()
         .collect()
         .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")))
+        .labelled("compound statement")
 }
 
 fn if_statement<'tokens, 'src: 'tokens>(
@@ -133,6 +141,7 @@ fn if_statement<'tokens, 'src: 'tokens>(
         .map(|(((if_expr, if_body), else_ifs), else_body)| {
             Statement::If((if_expr, if_body), else_ifs, else_body)
         })
+        .labelled("if statement")
 }
 
 fn optionally_typed_ident<'tokens, 'src: 'tokens>(
@@ -154,17 +163,23 @@ fn optionally_typed_ident<'tokens, 'src: 'tokens>(
 
 pub fn statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
-    // TODO: Make semicolon shared parser.
-    let semi = just(Token::SyntaxToken(";"));
     recursive(|this| {
         choice((
-            assignment_statement().then_ignore(semi.clone()),
-            inc_dec_statement().then_ignore(semi.clone()),
-            return_statement().then_ignore(semi.clone()),
-            discard_statement().then_ignore(semi.clone()),
+            just(Token::Trivia)
+                .map(|_| Statement::Trivia)
+                .labelled("trivia"),
             if_statement(this.clone()),
             declaration(this.clone()).map(Statement::Declaration),
+            choice((
+                inc_dec_statement(),
+                call_expression(expression()).map(Statement::FuncCall),
+                assignment_statement(),
+                return_statement(),
+                discard_statement(),
+            ))
+            .then_ignore(just(Token::SyntaxToken(";"))),
         ))
         .memoized()
     })
+    .labelled("statement")
 }
