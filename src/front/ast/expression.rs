@@ -3,7 +3,7 @@ use chumsky::prelude::*;
 mod lhs_expression;
 pub mod relational_expression;
 use crate::front::token::Token;
-pub use lhs_expression::{lhs_expression, LHSExpression};
+pub use lhs_expression::{core_lhs_expression, lhs_expression, LHSExpression};
 
 use self::relational_expression::{
     bitwise_expression, relational_expression, short_circuit_and_expression,
@@ -98,9 +98,10 @@ pub(crate) fn template_elaborated_ident<'tokens, 'src: 'tokens>(
     select!(Token::Ident(ident) => ident.to_owned())
         .then(template_list(expr).or_not())
         .map(|(ident, templates)| TemplateElaboratedIdent(Ident(ident), templates))
+        .labelled("template elaborate ident")
 }
 
-fn call_expression<'tokens, 'src: 'tokens>(
+pub fn call_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
         + 'tokens,
@@ -108,6 +109,7 @@ fn call_expression<'tokens, 'src: 'tokens>(
     template_elaborated_ident(expr.clone())
         .then(argument_expression_list(expr))
         .map(|(ident, args)| CallPhrase(ident, ArgumentExpressionList(args)))
+        .labelled("call expression")
 }
 
 fn paren_expression<'tokens, 'src: 'tokens>(
@@ -116,11 +118,12 @@ fn paren_expression<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     expr.delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
+        .labelled("paren expression")
 }
 
 fn literal<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Literal, RichErr<'src, 'tokens>> + Clone {
-    select! { Token::Literal(lit) => lit }
+    select! { Token::Literal(lit) => lit }.labelled("literal")
 }
 
 fn primary_expression<'tokens, 'src: 'tokens>(
@@ -134,6 +137,7 @@ fn primary_expression<'tokens, 'src: 'tokens>(
         literal().map(Expression::Literal),
         template_elaborated_ident(expr.clone()).map(Expression::TemplateElaboratedIdent),
     ))
+    .labelled("primary expression")
 }
 
 fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
@@ -159,6 +163,7 @@ fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
             .then(this.or_not())
             .map(|(inner, extra)| ComponentOrSwizzleSpecifier(inner, extra.map(Box::new)))
     })
+    .labelled("component or swizzle specifier")
 }
 
 fn singular_expression<'tokens, 'src: 'tokens>(
@@ -172,6 +177,7 @@ fn singular_expression<'tokens, 'src: 'tokens>(
             Some(access) => Expression::Singular(Box::new(primary), Some(access)),
             None => primary,
         })
+        .labelled("singular expression")
 }
 
 pub fn expression<'tokens, 'src: 'tokens>(
@@ -185,7 +191,7 @@ pub fn expression<'tokens, 'src: 'tokens>(
         ))
         .memoized()
     })
-    .recover_with(skip_then_retry_until(any().ignored(), end()))
+    .labelled("expression")
 }
 
 #[cfg(test)]
