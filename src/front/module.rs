@@ -9,7 +9,6 @@ pub struct Module<'src> {
     pub source: &'src str,
     pub tokens: Vec<(Token<'src>, SimpleSpan)>,
     pub ast: Vec<Statement>,
-    // pub errors: Vec<ModuleError<'src>>,
 }
 
 #[derive(Debug)]
@@ -29,13 +28,7 @@ impl ModuleError<'_> {
     pub fn message(&self) -> String {
         match self {
             ModuleError::Tokenizer(err) => err.to_string(),
-            ModuleError::AstParser(err) => {
-                format!(
-                    "Expected: '{:?}', but got: '{:?}'",
-                    err.expected().collect::<Vec<_>>(),
-                    err.found()
-                )
-            }
+            ModuleError::AstParser(err) => format!("{:?}", err),
         }
     }
 }
