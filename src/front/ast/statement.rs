@@ -40,12 +40,16 @@ pub enum Statement {
         body_attributes: Vec<Attribute>,
         body: Vec<Statement>,
     },
-
     For {
         attributes: Vec<Attribute>,
         init: Box<Option<Statement>>,
         expression: Box<Option<Expression>>,
         update: Box<Option<Statement>>,
+        body: Vec<Statement>,
+    },
+    While {
+        attributes: Vec<Attribute>,
+        expression: Expression,
         body: Vec<Statement>,
     },
 }
@@ -194,6 +198,26 @@ fn for_statement<'tokens, 'src: 'tokens>(
                 body,
             },
         )
+        .labelled("for statement")
+}
+
+fn while_statement<'tokens, 'src: 'tokens>(
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    Attribute::list_parser()
+        .then_ignore(just(Token::Keyword(Keyword::While)))
+        .then(
+            expression().delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")"))),
+        )
+        .then(compound_statement(stmt.clone()))
+        .map(|((attributes, expression), body)| Statement::While {
+            attributes,
+            expression,
+            body,
+        })
+        .labelled("while statement")
 }
 
 fn if_statement<'tokens, 'src: 'tokens>(
@@ -249,6 +273,7 @@ pub fn statement<'tokens, 'src: 'tokens>(
             if_statement(this.clone()),
             loop_statement(this.clone()),
             for_statement(this.clone()),
+            while_statement(this.clone()),
             declaration(this.clone()).map(Statement::Declaration),
             choice((
                 inc_dec_statement(),
