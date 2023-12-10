@@ -26,7 +26,7 @@ pub enum Statement {
     Assignment(LHSExpression, AssignmentOperator, Expression),
     Increment(LHSExpression),
     Decrement(LHSExpression),
-    Return(Expression),
+    Return(Option<Expression>),
     If(
         (Expression, Vec<Statement>),
         Vec<(Expression, Vec<Statement>)>,
@@ -108,7 +108,7 @@ fn inc_dec_statement<'tokens, 'src: 'tokens>(
 fn return_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     just(Token::Keyword(Keyword::Return))
-        .ignore_then(expression())
+        .ignore_then(expression().or_not())
         .map(Statement::Return)
         .labelled("return statement")
 }
