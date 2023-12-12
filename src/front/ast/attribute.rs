@@ -165,21 +165,17 @@ impl Interpolate {
     pub fn parser<'tokens, 'src: 'tokens>(
     ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Interpolate, RichErr<'src, 'tokens>> + Clone
     {
-        let d1 = just(Token::SyntaxToken("(")).ignore_then(
-            expression()
-                .then_ignore(just(Token::SyntaxToken(",")).or_not())
-                .then_ignore(just(Token::SyntaxToken("(")))
-                .map(Self::D1),
-        );
+        let d1 = expression()
+            .then_ignore(just(Token::SyntaxToken(",")).or_not())
+            .then_ignore(just(Token::SyntaxToken(")")))
+            .map(Self::D1);
 
-        let d2 = just(Token::SyntaxToken("(")).ignore_then(
-            expression()
-                .then_ignore(just(Token::SyntaxToken(",")))
-                .then(expression())
-                .then_ignore(just(Token::SyntaxToken(",")).or_not())
-                .then_ignore(just(Token::SyntaxToken("(")))
-                .map(|(x, y)| Self::D2(x, y)),
-        );
+        let d2 = expression()
+            .then_ignore(just(Token::SyntaxToken(",")))
+            .then(expression())
+            .then_ignore(just(Token::SyntaxToken(",")).or_not())
+            .then_ignore(just(Token::SyntaxToken(")")))
+            .map(|(x, y)| Self::D2(x, y));
 
         just(Token::SyntaxToken("(")).ignore_then(choice((d2, d1)))
     }
