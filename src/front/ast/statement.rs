@@ -55,6 +55,63 @@ pub enum Statement {
         expression: Expression,
         body: Vec<Statement>,
     },
+    Switch {
+        attributes: Vec<Attribute>,
+        expression: Expression,
+        body: Vec<SwitchClause>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SwitchClause {
+    Case(Vec<CaseClause>, Vec<Statement>),
+    Default(Vec<Statement>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CaseClause {
+    Expression(Expression),
+    Default,
+}
+
+impl CaseClause {
+    pub fn parser<'tokens, 'src: 'tokens>(
+    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Self, RichErr<'src, 'tokens>> + Clone
+    {
+        let case = expression().map(CaseClause::Expression);
+
+        let default = just(Token::Keyword(Keyword::Default)).map(|_| CaseClause::Default);
+
+        choice((case, default)).labelled("case clause")
+    }
+}
+
+impl SwitchClause {
+    pub fn parser<'tokens, 'src: 'tokens>(
+        stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+            + Clone
+            + 'tokens,
+    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Self, RichErr<'src, 'tokens>> + Clone
+    {
+        let case_clause = just(Token::Keyword(Keyword::Case))
+            .ignore_then(
+                CaseClause::parser()
+                    .separated_by(just(Token::SyntaxToken(",")))
+                    .allow_leading()
+                    .at_least(1)
+                    .collect(),
+            )
+            .then_ignore(just(Token::SyntaxToken(":")).or_not())
+            .then(compound_statement(stmt.clone()))
+            .map(|(cases, body)| SwitchClause::Case(cases, body));
+
+        let default_clause = just(Token::Keyword(Keyword::Default))
+            .ignore_then(just(Token::SyntaxToken(":")).or_not())
+            .ignore_then(compound_statement(stmt.clone()))
+            .map(SwitchClause::Default);
+
+        choice((case_clause, default_clause)).labelled("switch clause")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -278,6 +335,28 @@ fn if_statement<'tokens, 'src: 'tokens>(
         .labelled("if statement")
 }
 
+fn switch_statement<'tokens, 'src: 'tokens>(
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+    Attribute::list_parser()
+        .then_ignore(just(Token::Keyword(Keyword::Switch)))
+        .then(expression())
+        .then(
+            SwitchClause::parser(stmt)
+                .repeated()
+                .collect()
+                .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}"))),
+        )
+        .map(|((attributes, expression), body)| Statement::Switch {
+            attributes,
+            expression,
+            body,
+        })
+        .labelled("switch statement")
+}
+
 fn optionally_typed_ident<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -299,15 +378,14 @@ pub fn statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
         choice((
-            just(Token::Trivia)
-                .map(|_| Statement::Trivia)
-                .labelled("trivia"),
             if_statement(this.clone()),
             loop_statement(this.clone()),
             for_statement(this.clone()),
             while_statement(this.clone()),
             declaration(this.clone()).map(Statement::Declaration),
             continuing_statement(this.clone()),
+            switch_statement(this.clone()),
+            compound_statement(this.clone()).map(Statement::Compound),
             choice((
                 inc_dec_statement(),
                 call_expression(expression()).map(Statement::FuncCall),

@@ -115,6 +115,7 @@ pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)
         .map_with(|tok, e| (tok, e.span()))
         // Remove whitespace
         .padded()
+        .padded_by(trivia().repeated())
         // Error recovery
         .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
