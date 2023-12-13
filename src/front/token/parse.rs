@@ -1,4 +1,4 @@
-use super::{ident, Keyword, Literal, RichErr, Token};
+use super::{ident, Literal, RichErr, Token};
 use crate::front::Span;
 
 use chumsky::prelude::*;
