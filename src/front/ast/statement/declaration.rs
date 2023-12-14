@@ -70,18 +70,16 @@ pub struct FunctionParameter {
 pub fn variable_or_value_decl<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
     let variable_decl = Attribute::list_parser()
+        .then_ignore(just(Token::Keyword(Keyword::Var)))
+        .then(template_list(expression()).or_not())
+        .then(optionally_typed_ident(expression()))
         .then(
-            just(Token::Keyword(Keyword::Var))
-                .ignore_then(template_list(expression()).or_not())
-                .then(optionally_typed_ident(expression()))
-                .then(
-                    just(Token::SyntaxToken("="))
-                        .ignore_then(expression())
-                        .or_not(),
-                ),
+            just(Token::SyntaxToken("="))
+                .ignore_then(expression())
+                .or_not(),
         )
         .map(
-            |(attributes, ((scope, ident), initial_value))| Declaration::Variable {
+            |(((attributes, scope), ident), initial_value)| Declaration::Variable {
                 attributes,
                 scope,
                 ident,

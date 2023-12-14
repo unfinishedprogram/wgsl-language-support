@@ -54,6 +54,7 @@ pub enum Expression {
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
 }
 
+#[inline(always)]
 fn template_arg_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -63,6 +64,7 @@ fn template_arg_expression<'tokens, 'src: 'tokens>(
     expr.map(TemplateArgExpression)
 }
 
+#[inline(always)]
 fn argument_expression_list<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -75,6 +77,7 @@ fn argument_expression_list<'tokens, 'src: 'tokens>(
         .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
 }
 
+#[inline(always)]
 pub(crate) fn template_list<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -89,6 +92,7 @@ pub(crate) fn template_list<'tokens, 'src: 'tokens>(
         .map(TemplateList)
 }
 
+#[inline(always)]
 pub(crate) fn template_elaborated_ident<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -101,6 +105,7 @@ pub(crate) fn template_elaborated_ident<'tokens, 'src: 'tokens>(
         .labelled("template elaborate ident")
 }
 
+#[inline(always)]
 pub fn call_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -112,6 +117,7 @@ pub fn call_expression<'tokens, 'src: 'tokens>(
         .labelled("call expression")
 }
 
+#[inline(always)]
 fn paren_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -121,11 +127,13 @@ fn paren_expression<'tokens, 'src: 'tokens>(
         .labelled("paren expression")
 }
 
+#[inline(always)]
 fn literal<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Literal, RichErr<'src, 'tokens>> + Clone {
     select! { Token::Literal(lit) => lit }.labelled("literal")
 }
 
+#[inline(always)]
 fn primary_expression<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -140,6 +148,7 @@ fn primary_expression<'tokens, 'src: 'tokens>(
     .labelled("primary expression")
 }
 
+#[inline(always)]
 fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
     expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone
@@ -180,6 +189,7 @@ fn singular_expression<'tokens, 'src: 'tokens>(
         .labelled("singular expression")
 }
 
+#[inline(always)]
 pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|expr| {

@@ -168,15 +168,18 @@ pub fn unary_expression<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     recursive(|this| {
-        singular_expression(expr.clone()).or(select! {
-            Token::SyntaxToken("-") => UnaryOperator::Negative,
-            Token::SyntaxToken("!") => UnaryOperator::Not,
-            Token::SyntaxToken("~") => UnaryOperator::BitNot,
-            Token::SyntaxToken("*") => UnaryOperator::Deref,
-            Token::SyntaxToken("&") => UnaryOperator::AddrOf,
-        }
-        .then(this)
-        .map(|(op, expr)| Expression::Unary(op, Box::new(expr))))
+        choice((
+            select! {
+                Token::SyntaxToken("-") => UnaryOperator::Negative,
+                Token::SyntaxToken("!") => UnaryOperator::Not,
+                Token::SyntaxToken("~") => UnaryOperator::BitNot,
+                Token::SyntaxToken("*") => UnaryOperator::Deref,
+                Token::SyntaxToken("&") => UnaryOperator::AddrOf,
+            }
+            .then(this)
+            .map(|(op, expr)| Expression::Unary(op, Box::new(expr))),
+            singular_expression(expr.clone()),
+        ))
     })
 }
 
