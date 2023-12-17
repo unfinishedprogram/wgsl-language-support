@@ -49,12 +49,12 @@ pub enum Expression {
     Singular(Box<Expression>, Option<ComponentOrSwizzleSpecifier>),
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
 }
+
 pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     let st = |t| just(Token::SyntaxToken(t));
     let ident_str = select!(Token::Ident(ident) => ident.to_owned());
     let primary_expression = primary_expression();
-
     recursive(|expression| {
         let component_or_swizzle_specifier = recursive(|this| {
             choice((
@@ -71,7 +71,8 @@ pub fn expression<'tokens, 'src: 'tokens>(
             ))
             .then(this.or_not())
             .map(|(inner, next)| ComponentOrSwizzleSpecifier(inner, next.map(Box::new)))
-        });
+        })
+        .boxed();
 
         let unary_expression = {
             let unary_op = choice((
@@ -86,7 +87,8 @@ pub fn expression<'tokens, 'src: 'tokens>(
             unary_op.repeated().foldr(primary_expression, |op, expr| {
                 Expression::Unary(op, Box::new(expr))
             })
-        };
+        }
+        .boxed();
 
         let bitwise_expression__post_unary_expression = {
             let make_rel =
@@ -114,8 +116,8 @@ pub fn expression<'tokens, 'src: 'tokens>(
                 ),
             ))
             .map(|((lhs, op), rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs)))
-            .boxed()
-        };
+        }
+        .boxed();
 
         let shift_expression__post_unary_expression = {
             use ShiftOperator::*;
@@ -137,43 +139,32 @@ pub fn expression<'tokens, 'src: 'tokens>(
                     }),
                 // | ( multiplicative_operator unary_expression )* ( additive_operator unary_expression ( multiplicative_operator unary_expression )* )*,
             ))
-        };
+        }
+        .boxed();
 
         let relational_expression__post_unary_expression = {
             use RelationalOperator::*;
 
-            let relational_ops = choice((
-                shift_expression__post_unary_expression
-                    .clone()
-                    .then(st("==").to(Equal))
-                    .then(shift_expression__post_unary_expression.clone()),
-                shift_expression__post_unary_expression
-                    .clone()
-                    .then(st("!=").to(NotEqual))
-                    .then(shift_expression__post_unary_expression.clone()),
-                shift_expression__post_unary_expression
-                    .clone()
-                    .then(st("<=").to(LessThanEqual))
-                    .then(shift_expression__post_unary_expression.clone()),
-                shift_expression__post_unary_expression
-                    .clone()
-                    .then(st("<").to(LessThan))
-                    .then(shift_expression__post_unary_expression.clone()),
-                shift_expression__post_unary_expression
-                    .clone()
-                    .then(st(">=").to(GreaterThanEqual))
-                    .then(shift_expression__post_unary_expression.clone()),
-                shift_expression__post_unary_expression
-                    .clone()
-                    .then(st(">").to(GreaterThan))
-                    .then(shift_expression__post_unary_expression.clone()),
-            ))
-            .map(|((lhs, op), rhs)| {
-                Expression::Binary(Box::new(lhs), BinaryOperator::Relational(op), Box::new(rhs))
-            });
+            let ops = choice((
+                st("==").to(Equal),
+                st("!=").to(NotEqual),
+                st("<=").to(LessThanEqual),
+                st("<").to(LessThan),
+                st(">=").to(GreaterThanEqual),
+                st(">").to(GreaterThan),
+            ));
+
+            let relational_ops = shift_expression__post_unary_expression
+                .clone()
+                .then(ops)
+                .then(shift_expression__post_unary_expression.clone())
+                .map(|((lhs, op), rhs)| {
+                    Expression::Binary(Box::new(lhs), BinaryOperator::Relational(op), Box::new(rhs))
+                });
 
             choice((relational_ops, shift_expression__post_unary_expression))
-        };
+        }
+        .boxed();
 
         let make_rel = |prev, (op, next)| {
             Expression::Binary(
@@ -186,7 +177,7 @@ pub fn expression<'tokens, 'src: 'tokens>(
         let make_unary = |op_char, op| {
             st(op_char)
                 .to(op)
-                .then(unary_expression)
+                .then(unary_expression.clone())
                 .repeated()
                 .at_least(1)
         };
@@ -194,18 +185,24 @@ pub fn expression<'tokens, 'src: 'tokens>(
         // Expression
         choice((
             relational_expression__post_unary_expression
+                .clone()
                 .then(st("&&").to(BinaryOperator::ShortCircuit(ShortCircuitOperator::And)))
                 .then(
                     relational_expression__post_unary_expression
+                        .clone()
                         .foldl(make_unary("&&", ShortCircuitOperator::And), make_rel),
-                ),
+                )
+                .map(|((lhs, op), rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs))),
             relational_expression__post_unary_expression
+                .clone()
                 .then(st("||").to(BinaryOperator::ShortCircuit(ShortCircuitOperator::Or)))
                 .then(
                     relational_expression__post_unary_expression
+                        .clone()
                         .foldl(make_unary("||", ShortCircuitOperator::Or), make_rel),
-                ),
-            relational_expression__post_unary_expression,
+                )
+                .map(|((lhs, op), rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs))),
+            relational_expression__post_unary_expression.clone(),
             bitwise_expression__post_unary_expression,
         ))
     })
