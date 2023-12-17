@@ -1,0 +1,6 @@
+{
+    "cSpell.words": [
+        "binop"
+    ],
+    "rust-analyzer.diagnostics.useRustcErrorCode": true
+}

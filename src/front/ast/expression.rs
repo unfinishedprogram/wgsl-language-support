@@ -2,15 +2,14 @@ use chumsky::prelude::*;
 
 mod lhs_expression;
 pub mod relational_expression;
-use crate::front::token::Token;
 pub use lhs_expression::{core_lhs_expression, lhs_expression, LHSExpression};
 
 use self::relational_expression::{
-    bitwise_expression, relational_expression, short_circuit_and_expression,
-    short_circuit_or_expression, BinaryOperator, UnaryOperator,
+    AdditiveOperator, BinaryOperator, BitwiseOperator, MultiplicativeOperator, RelationalOperator,
+    ShiftOperator, ShortCircuitOperator, UnaryOperator,
 };
 use super::{ParserInput, RichErr};
-use crate::front::token::Literal;
+use crate::front::token::{Literal, Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ComponentOrSwizzleSpecifierInner {
@@ -31,10 +30,7 @@ pub struct Ident(String);
 pub struct TemplateElaboratedIdent(Ident, Option<TemplateList>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TemplateList(Vec<TemplateArgExpression>);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TemplateArgExpression(Expression);
+pub struct TemplateList(Vec<Expression>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CallPhrase(TemplateElaboratedIdent, ArgumentExpressionList);
@@ -53,155 +49,213 @@ pub enum Expression {
     Singular(Box<Expression>, Option<ComponentOrSwizzleSpecifier>),
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
 }
-
-#[inline(always)]
-fn template_arg_expression<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateArgExpression, RichErr<'src, 'tokens>>
-       + Clone {
-    expr.map(TemplateArgExpression)
-}
-
-#[inline(always)]
-fn argument_expression_list<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Expression>, RichErr<'src, 'tokens>> + Clone
-{
-    expr.separated_by(just(Token::SyntaxToken(",")))
-        .allow_trailing()
-        .collect()
-        .delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
-}
-
-#[inline(always)]
-pub(crate) fn template_list<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateList, RichErr<'src, 'tokens>> + Clone
-{
-    template_arg_expression(expr)
-        .separated_by(just(Token::SyntaxToken(",")))
-        .allow_trailing()
-        .collect()
-        .delimited_by(just(Token::TemplateArgsStart), just(Token::TemplateArgsEnd))
-        .map(TemplateList)
-}
-
-#[inline(always)]
-pub(crate) fn template_elaborated_ident<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
-       + Clone {
-    select!(Token::Ident(ident) => ident.to_owned())
-        .then(template_list(expr).or_not())
-        .map(|(ident, templates)| TemplateElaboratedIdent(Ident(ident), templates))
-        .labelled("template elaborate ident")
-}
-
-#[inline(always)]
-pub fn call_expression<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallPhrase, RichErr<'src, 'tokens>> + Clone {
-    template_elaborated_ident(expr.clone())
-        .then(argument_expression_list(expr))
-        .map(|(ident, args)| CallPhrase(ident, ArgumentExpressionList(args)))
-        .labelled("call expression")
-}
-
-#[inline(always)]
-fn paren_expression<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    expr.delimited_by(just(Token::SyntaxToken("(")), just(Token::SyntaxToken(")")))
-        .labelled("paren expression")
-}
-
-#[inline(always)]
-fn literal<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Literal, RichErr<'src, 'tokens>> + Clone {
-    select! { Token::Literal(lit) => lit }.labelled("literal")
-}
-
-#[inline(always)]
-fn primary_expression<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    choice((
-        paren_expression(expr.clone()).map(|expr| Expression::ParenExpression(Box::new(expr))),
-        call_expression(expr.clone()).map(Expression::CallExpression),
-        literal().map(Expression::Literal),
-        template_elaborated_ident(expr.clone()).map(Expression::TemplateElaboratedIdent),
-    ))
-    .labelled("primary expression")
-}
-
-#[inline(always)]
-fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<
-    'tokens,
-    ParserInput<'tokens, 'src>,
-    ComponentOrSwizzleSpecifier,
-    RichErr<'src, 'tokens>,
-> + Clone {
-    recursive(|this| {
-        let index_expr = expr
-            .delimited_by(just(Token::SyntaxToken("[")), just(Token::SyntaxToken("]")))
-            .map(|expr| ComponentOrSwizzleSpecifierInner::IndexExpression(Box::new(expr)));
-
-        let member_ident_or_swizzle = just(Token::SyntaxToken("."))
-            .then(select! {Token::Ident(ident) => ident.to_owned()})
-            .map(|(_, ident)| ComponentOrSwizzleSpecifierInner::MemberAccess(ident));
-
-        choice((member_ident_or_swizzle, index_expr))
-            .then(this.or_not())
-            .map(|(inner, extra)| ComponentOrSwizzleSpecifier(inner, extra.map(Box::new)))
-    })
-    .labelled("component or swizzle specifier")
-}
-
-fn singular_expression<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
-        + Clone
-        + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    primary_expression(expr.clone())
-        .then(component_or_swizzle_specifier(expr).or_not())
-        .map(|(primary, access)| match access {
-            Some(access) => Expression::Singular(Box::new(primary), Some(access)),
-            None => primary,
-        })
-        .labelled("singular expression")
-}
-
-#[inline(always)]
 pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    recursive(|expr| {
+    let st = |t| just(Token::SyntaxToken(t));
+    let ident_str = select!(Token::Ident(ident) => ident.to_owned());
+    let primary_expression = primary_expression();
+
+    recursive(|expression| {
+        let component_or_swizzle_specifier = recursive(|this| {
+            choice((
+                expression
+                    .delimited_by(st("["), st("]"))
+                    .map(Box::new)
+                    .map(ComponentOrSwizzleSpecifierInner::IndexExpression), // | `'['` expression `']'` component_or_swizzle_specifier ?
+                st(".")
+                    .ignore_then(ident_str)
+                    .map(ComponentOrSwizzleSpecifierInner::MemberAccess), // | `'.'` swizzle_name component_or_swizzle_specifier ?
+                st(".")
+                    .ignore_then(ident_str)
+                    .map(ComponentOrSwizzleSpecifierInner::MemberAccess), // | `'.'` member_ident component_or_swizzle_specifier ?
+            ))
+            .then(this.or_not())
+            .map(|(inner, next)| ComponentOrSwizzleSpecifier(inner, next.map(Box::new)))
+        })
+        .boxed();
+
+        let unary_expression = {
+            let unary_op = choice((
+                st("!").to(UnaryOperator::Not),
+                st("&").to(UnaryOperator::AddrOf),
+                st("*").to(UnaryOperator::Deref),
+                st("-").to(UnaryOperator::Negative),
+                st("~").to(UnaryOperator::BitNot),
+            ))
+            .boxed();
+
+            unary_op.repeated().foldr(primary_expression, |op, expr| {
+                Expression::Unary(op, Box::new(expr))
+            })
+        }
+        .boxed();
+
+        let bitwise_expression__post_unary_expression = {
+            let make_rel = |prev, (op, next)| {
+                Expression::Binary(Box::new(prev), BinaryOperator::Bitwise(op), Box::new(next))
+            };
+
+            let make_unary = |op_char, op| {
+                st(op_char)
+                    .to(op)
+                    .then(unary_expression)
+                    .repeated()
+                    .at_least(1)
+            };
+
+            choice((
+                unary_expression
+                    .then(st("&").to(BinaryOperator::Bitwise(BitwiseOperator::And)))
+                    .then(unary_expression.foldl(make_unary("&", BitwiseOperator::And), make_rel)),
+                unary_expression
+                    .then(st("^").to(BinaryOperator::Bitwise(BitwiseOperator::Xor)))
+                    .then(unary_expression.foldl(make_unary("^", BitwiseOperator::Xor), make_rel)),
+                unary_expression
+                    .then(st("|").to(BinaryOperator::Bitwise(BitwiseOperator::Or)))
+                    .then(unary_expression.foldl(make_unary("|", BitwiseOperator::Or), make_rel)),
+            ))
+        }
+        .boxed();
+
+        let shift_expression__post_unary_expression = {
+            use ShiftOperator::*;
+            choice((
+                unary_expression
+                    .then(st(">>").to(BinaryOperator::Shift(Right)))
+                    .then(unary_expression)
+                    .map(|((expr1, op), expr2)| {
+                        Expression::Binary(Box::new(expr1), op, Box::new(expr2))
+                    }),
+                unary_expression
+                    .then(st("<<").to(BinaryOperator::Shift(Left)))
+                    .then(unary_expression)
+                    .map(|((expr1, op), expr2)| {
+                        Expression::Binary(Box::new(expr1), op, Box::new(expr2))
+                    }),
+                // | ( multiplicative_operator unary_expression )* ( additive_operator unary_expression ( multiplicative_operator unary_expression )* )*,
+            ))
+        }
+        .boxed();
+
+        let relational_expression__post_unary_expression = {
+            use RelationalOperator::*;
+
+            let relational_ops = choice((
+                shift_expression__post_unary_expression
+                    .then(st("==").to(Equal))
+                    .then(shift_expression__post_unary_expression),
+                shift_expression__post_unary_expression
+                    .then(st("!=").to(NotEqual))
+                    .then(shift_expression__post_unary_expression),
+                shift_expression__post_unary_expression
+                    .then(st("<=").to(LessThanEqual))
+                    .then(shift_expression__post_unary_expression),
+                shift_expression__post_unary_expression
+                    .then(st("<").to(LessThan))
+                    .then(shift_expression__post_unary_expression),
+                shift_expression__post_unary_expression
+                    .then(st(">=").to(GreaterThanEqual))
+                    .then(shift_expression__post_unary_expression),
+                shift_expression__post_unary_expression
+                    .then(st(">").to(GreaterThan))
+                    .then(shift_expression__post_unary_expression),
+            ))
+            .map(|((lhs, op), rhs)| {
+                Expression::Binary(Box::new(lhs), BinaryOperator::Relational(op), Box::new(rhs))
+            });
+
+            choice((relational_ops, shift_expression__post_unary_expression))
+        }
+        .boxed();
+
+        // let make_rel = |prev, (op, next)| {
+        //     Expression::Binary(
+        //         Box::new(prev),
+        //         BinaryOperator::ShortCircuit(op),
+        //         Box::new(next),
+        //     )
+        // };
+
+        // let make_unary = |op_char, op| {
+        //     st(op_char)
+        //         .to(op)
+        //         .then(unary_expression)
+        //         .repeated()
+        //         .at_least(1)
+        // };
+
+        // Expression
         choice((
-            bitwise_expression(expr.clone()),
-            short_circuit_and_expression(expr.clone()),
-            short_circuit_or_expression(expr.clone()),
-            relational_expression(expr.clone()),
+            // relational_expression__post_unary_expression
+            //     .then(st("&&").to(BinaryOperator::ShortCircuit(ShortCircuitOperator::And)))
+            //     .then(
+            //         relational_expression__post_unary_expression
+            //             .foldl(make_unary("&&", ShortCircuitOperator::And), make_rel),
+            //     ),
+            // relational_expression__post_unary_expression
+            //     .then(st("||").to(BinaryOperator::ShortCircuit(ShortCircuitOperator::Or)))
+            //     .then(
+            //         relational_expression__post_unary_expression
+            //             .foldl(make_unary("||", ShortCircuitOperator::Or), make_rel),
+            //     ),
+            relational_expression__post_unary_expression,
+            // bitwise_expression__post_unary_expression,
         ))
-        .memoized()
+        .boxed()
     })
-    .labelled("expression")
+}
+
+#[allow(non_snake_case)]
+pub fn primary_expression<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
+    let expression = expression();
+
+    let st = |t| just(Token::SyntaxToken(t));
+    let ident = select!(Token::Ident(ident) => Ident(ident.to_owned()));
+
+    let template_elaborated_ident__post_ident = just(Token::TemplateArgsStart)
+        .ignore_then(
+            expression
+                .clone()
+                .separated_by(just(Token::SyntaxToken(",")))
+                .allow_trailing()
+                .at_least(1)
+                .collect(),
+        )
+        .then_ignore(just(Token::TemplateArgsEnd))
+        .map(TemplateList)
+        .or_not();
+
+    choice((
+        expression
+            .clone()
+            .delimited_by(st("("), st(")"))
+            .map(Box::new)
+            .map(Expression::ParenExpression),
+        select!(Token::Literal(lit) => Expression::Literal(lit)),
+        ident
+            .then(template_elaborated_ident__post_ident.clone())
+            .then(
+                expression
+                    .clone()
+                    .separated_by(st(","))
+                    .allow_trailing()
+                    .collect()
+                    .delimited_by(st("("), st(")")),
+            )
+            .map(|((ident, template), args)| {
+                CallPhrase(
+                    TemplateElaboratedIdent(ident, template),
+                    ArgumentExpressionList(args),
+                )
+            })
+            .map(Expression::CallExpression),
+        ident
+            .then(template_elaborated_ident__post_ident)
+            .map(|(ident, template)| {
+                Expression::TemplateElaboratedIdent(TemplateElaboratedIdent(ident, template))
+            }),
+    ))
 }
 
 #[cfg(test)]

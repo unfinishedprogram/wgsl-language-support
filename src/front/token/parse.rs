@@ -5,8 +5,8 @@ use chumsky::prelude::*;
 
 pub fn literal<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>> {
     let boolean_literal = choice((
-        just("true").map(|_| Literal::Boolean(true)),
-        just("false").map(|_| Literal::Boolean(false)),
+        just("true").to(Literal::Boolean(true)),
+        just("false").to(Literal::Boolean(false)),
     ));
 
     let int_literal = {
@@ -96,14 +96,14 @@ pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>
     let line_comment = just("//")
         .then(none_of('\n').repeated())
         .padded()
-        .map(|_| Token::Trivia);
+        .to(Token::Trivia);
 
     let block_comment = {
         // TODO: Make this recursive
         let content = any().and_is(just("/*").or(just("*/")).not()).repeated();
         content.delimited_by(just("/*"), just("*/"))
     }
-    .map(|_| Token::Trivia);
+    .to(Token::Trivia);
 
     choice((line_comment, block_comment))
 }

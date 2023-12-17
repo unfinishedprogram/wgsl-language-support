@@ -80,7 +80,7 @@ impl CaseClause {
     {
         let case = expression().map(CaseClause::Expression);
 
-        let default = just(Token::Keyword(Keyword::Default)).map(|_| CaseClause::Default);
+        let default = just(Token::Keyword(Keyword::Default)).to(CaseClause::Default);
 
         choice((case, default)).labelled("case clause")
     }
@@ -176,13 +176,13 @@ fn return_statement<'tokens, 'src: 'tokens>(
 fn discard_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     just(Token::Keyword(Keyword::Discard))
-        .map(|_| Statement::Discard)
+        .to(Statement::Discard)
         .labelled("discard statement")
 }
 
 fn break_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
-    let just_break = just(Token::Keyword(Keyword::Break)).map(|_| Statement::Break);
+    let just_break = just(Token::Keyword(Keyword::Break)).to(Statement::Break);
 
     let break_if = just(Token::Keyword(Keyword::Break))
         .ignore_then(just(Token::Keyword(Keyword::If)))
@@ -195,7 +195,7 @@ fn break_statement<'tokens, 'src: 'tokens>(
 fn continue_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     just(Token::Keyword(Keyword::Continue))
-        .map(|_| Statement::Continue)
+        .to(Statement::Continue)
         .labelled("continue statement")
 }
 

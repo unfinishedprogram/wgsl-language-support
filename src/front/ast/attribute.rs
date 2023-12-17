@@ -2,10 +2,7 @@ use chumsky::prelude::*;
 
 use crate::front::token::Keyword;
 
-use super::{
-    expression::{expression, Expression},
-    ParserInput, RichErr, Token,
-};
+use super::{expression::Expression, ParserInput, RichErr, Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Attribute {
