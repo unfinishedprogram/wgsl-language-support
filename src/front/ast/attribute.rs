@@ -2,7 +2,10 @@ use chumsky::prelude::*;
 
 use crate::front::token::Keyword;
 
-use super::{expression::Expression, ParserInput, RichErr, Token};
+use super::{
+    expression::{expression, Expression},
+    ParserInput, RichErr, Token,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Attribute {
@@ -28,6 +31,8 @@ impl Attribute {
     fn parser<'tokens, 'src: 'tokens>(
     ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Attribute, RichErr<'src, 'tokens>> + Clone
     {
+        let attr_name = |name| just(Token::Ident(name)).labelled("attribute name");
+
         let expr_param = || {
             just(Token::SyntaxToken("("))
                 .ignore_then(expression())
@@ -43,25 +48,25 @@ impl Attribute {
             Token::Ident("vertex") => Attribute::Vertex,
             Token::Ident("fragment") => Attribute::Fragment,
             Token::Ident("compute") => Attribute::Compute,
-        };
+        }
+        .labelled("attribute name");
 
         let special = choice((
-            just(Token::Ident("diagnostic"))
+            attr_name("diagnostic")
                 .ignore_then(DiagnosticControl::parser().map(Attribute::Diagnostic)),
-            just(Token::Ident("interpolate"))
-                .ignore_then(Interpolate::parser().map(Attribute::Interpolate)),
-            just(Token::Ident("workgroup_size"))
+            attr_name("interpolate").ignore_then(Interpolate::parser().map(Attribute::Interpolate)),
+            attr_name("workgroup_size")
                 .ignore_then(WorkgroupSize::parser().map(Attribute::WorkgroupSize)),
         ));
 
         let with_expr = choice((
-            just(Token::Ident("align")).ignore_then(expr_param().map(Attribute::Align)),
-            just(Token::Ident("binding")).ignore_then(expr_param().map(Attribute::Binding)),
-            just(Token::Ident("builtin")).ignore_then(expr_param().map(Attribute::Builtin)),
-            just(Token::Ident("group")).ignore_then(expr_param().map(Attribute::Group)),
-            just(Token::Ident("id")).ignore_then(expr_param().map(Attribute::Id)),
-            just(Token::Ident("location")).ignore_then(expr_param().map(Attribute::Location)),
-            just(Token::Ident("size")).ignore_then(expr_param().map(Attribute::Size)),
+            attr_name("align").ignore_then(expr_param().map(Attribute::Align)),
+            attr_name("binding").ignore_then(expr_param().map(Attribute::Binding)),
+            attr_name("builtin").ignore_then(expr_param().map(Attribute::Builtin)),
+            attr_name("group").ignore_then(expr_param().map(Attribute::Group)),
+            attr_name("id").ignore_then(expr_param().map(Attribute::Id)),
+            attr_name("location").ignore_then(expr_param().map(Attribute::Location)),
+            attr_name("size").ignore_then(expr_param().map(Attribute::Size)),
         ));
 
         just(Token::SyntaxToken("@")).ignore_then(choice((no_expr, special, with_expr)))

@@ -4,6 +4,7 @@ use super::Token;
 
 pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
     struct UnclosedCandidate {
+        // Position offset in bytes
         position: usize,
         depth: u32,
     }
@@ -14,8 +15,50 @@ pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
     let mut current_position: usize = 0;
     let mut nesting_depth: u32 = 0;
 
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
+
+    let byte_position = |p| {
+        chars[0..p]
+            .iter()
+            .cloned()
+            .collect::<String>()
+            .as_bytes()
+            .len()
+    };
+
     while current_position < chars.len() {
+        if in_line_comment {
+            if chars[current_position] == '\n' {
+                in_line_comment = false;
+            }
+            current_position += 1;
+            continue;
+        }
+
+        if in_block_comment {
+            if chars[current_position] == '*' && chars[current_position + 1] == '/' {
+                in_block_comment = false;
+                current_position += 2;
+                continue;
+            }
+            current_position += 1;
+            continue;
+        }
+
         match chars[current_position] {
+            '/' => {
+                current_position += 1;
+                if chars[current_position] == '/' {
+                    in_line_comment = true;
+                    current_position += 1;
+                    continue;
+                } else if chars[current_position] == '*' {
+                    in_block_comment = true;
+                    current_position += 1;
+                    continue;
+                }
+            }
             '<' => {
                 pending.push(UnclosedCandidate {
                     position: current_position,
@@ -30,7 +73,10 @@ pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
             }
             '>' => match pending.last() {
                 Some(unclosed) if unclosed.depth == nesting_depth => {
-                    discovered_template_lists.push((unclosed.position, current_position));
+                    discovered_template_lists.push((
+                        byte_position(unclosed.position),
+                        byte_position(current_position),
+                    ));
                     pending.pop();
                     current_position += 1;
                     continue;

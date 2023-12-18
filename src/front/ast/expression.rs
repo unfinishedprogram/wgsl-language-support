@@ -56,28 +56,46 @@ pub fn st<'tokens, 'src: 'tokens>(
     just(Token::SyntaxToken(t))
 }
 
+pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<
+    'tokens,
+    ParserInput<'tokens, 'src>,
+    ComponentOrSwizzleSpecifier,
+    RichErr<'src, 'tokens>,
+> + Clone {
+    let ident_str = select!(Token::Ident(ident) => ident.to_owned());
+
+    recursive(|this| {
+        choice((
+            expression
+                .delimited_by(st("["), st("]"))
+                .map(Box::new)
+                .map(ComponentOrSwizzleSpecifierInner::IndexExpression), // | `'['` expression `']'` component_or_swizzle_specifier ?
+            st(".")
+                .ignore_then(ident_str)
+                .map(ComponentOrSwizzleSpecifierInner::MemberAccess), // | `'.'` swizzle_name component_or_swizzle_specifier ?
+            st(".")
+                .ignore_then(ident_str)
+                .map(ComponentOrSwizzleSpecifierInner::MemberAccess), // | `'.'` member_ident component_or_swizzle_specifier ?
+        ))
+        .then(this.or_not())
+        .map(|(inner, next)| ComponentOrSwizzleSpecifier(inner, next.map(Box::new)))
+    })
+    .boxed()
+}
+
 pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    let ident_str = select!(Token::Ident(ident) => ident.to_owned());
-    let primary_expression = primary_expression();
     recursive(|expression| {
-        let component_or_swizzle_specifier = recursive(|this| {
-            choice((
-                expression
-                    .delimited_by(st("["), st("]"))
-                    .map(Box::new)
-                    .map(ComponentOrSwizzleSpecifierInner::IndexExpression), // | `'['` expression `']'` component_or_swizzle_specifier ?
-                st(".")
-                    .ignore_then(ident_str)
-                    .map(ComponentOrSwizzleSpecifierInner::MemberAccess), // | `'.'` swizzle_name component_or_swizzle_specifier ?
-                st(".")
-                    .ignore_then(ident_str)
-                    .map(ComponentOrSwizzleSpecifierInner::MemberAccess), // | `'.'` member_ident component_or_swizzle_specifier ?
-            ))
-            .then(this.or_not())
-            .map(|(inner, next)| ComponentOrSwizzleSpecifier(inner, next.map(Box::new)))
-        })
-        .boxed();
+        let primary_expression = choice((
+            select!(Token::Literal(lit) => Expression::Literal(lit)),
+            primary_expression(expression.clone())
+                .then(component_or_swizzle_specifier(expression.clone()).or_not())
+                .map(|(expr, comp_or_swizz)| Expression::Singular(Box::new(expr), comp_or_swizz)),
+        ));
 
         let unary_expression = {
             let unary_op = choice((
@@ -104,46 +122,74 @@ pub fn expression<'tokens, 'src: 'tokens>(
             let bit_or = st("|").to(BinaryOperator::Bitwise(BitwiseOperator::Or));
 
             choice((
-                unary_expression.clone().then(bit_and.clone()).then(
-                    unary_expression
-                        .clone()
-                        .foldl(bit_and.then(unary_expression.clone()).repeated(), make_rel),
+                unary_expression.clone().foldl(
+                    bit_and
+                        .then(unary_expression.clone())
+                        .repeated()
+                        .at_least(1),
+                    make_rel,
                 ),
-                unary_expression.clone().then(bit_xor.clone()).then(
-                    unary_expression
-                        .clone()
-                        .foldl(bit_xor.then(unary_expression.clone()).repeated(), make_rel),
+                unary_expression.clone().foldl(
+                    bit_xor
+                        .then(unary_expression.clone())
+                        .repeated()
+                        .at_least(1),
+                    make_rel,
                 ),
-                unary_expression.clone().then(bit_or.clone()).then(
-                    unary_expression
-                        .clone()
-                        .foldl(bit_or.then(unary_expression.clone()).repeated(), make_rel),
+                unary_expression.clone().foldl(
+                    bit_or.then(unary_expression.clone()).repeated().at_least(1),
+                    make_rel,
                 ),
             ))
-            .map(|((lhs, op), rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs)))
         }
         .boxed();
 
         let shift_expression__post_unary_expression = {
-            use ShiftOperator::*;
+            let multiplicative_operator = choice((
+                st("*").to(BinaryOperator::Multiplicative(
+                    MultiplicativeOperator::Multiply,
+                )),
+                st("/").to(BinaryOperator::Multiplicative(
+                    MultiplicativeOperator::Divide,
+                )),
+                st("%").to(BinaryOperator::Multiplicative(
+                    MultiplicativeOperator::Modulo,
+                )),
+            ));
 
-            choice((
-                unary_expression
-                    .clone()
-                    .then(st(">>").to(BinaryOperator::Shift(Right)))
+            let additive_operator = choice((
+                st("+").to(BinaryOperator::Additive(AdditiveOperator::Plus)),
+                st("-").to(BinaryOperator::Additive(AdditiveOperator::Minus)),
+            ));
+
+            let shift_operator = choice((
+                st(">>").to(BinaryOperator::Shift(ShiftOperator::Right)),
+                st("<<").to(BinaryOperator::Shift(ShiftOperator::Left)),
+            ));
+
+            let multiplicative_fold = unary_expression.clone().foldl(
+                multiplicative_operator
                     .then(unary_expression.clone())
-                    .map(|((expr1, op), expr2)| {
-                        Expression::Binary(Box::new(expr1), op, Box::new(expr2))
-                    }),
-                unary_expression
-                    .clone()
-                    .then(st("<<").to(BinaryOperator::Shift(Left)))
-                    .then(unary_expression.clone())
-                    .map(|((expr1, op), expr2)| {
-                        Expression::Binary(Box::new(expr1), op, Box::new(expr2))
-                    }),
-                // | ( multiplicative_operator unary_expression )* ( additive_operator unary_expression ( multiplicative_operator unary_expression )* )*,
-            ))
+                    .repeated(),
+                |prev, (op, next)| Expression::Binary(Box::new(prev), op, Box::new(next)),
+            );
+
+            let additive_fold = multiplicative_fold.clone().foldl(
+                additive_operator
+                    .then(multiplicative_fold.clone())
+                    .repeated(),
+                |prev, (op, next)| Expression::Binary(Box::new(prev), op, Box::new(next)),
+            );
+
+            let shift = unary_expression
+                .clone()
+                .then(shift_operator)
+                .then(unary_expression.clone())
+                .map(|((expr1, op), expr2)| {
+                    Expression::Binary(Box::new(expr1), op, Box::new(expr2))
+                });
+
+            choice((shift, additive_fold))
         }
         .boxed();
 
@@ -189,53 +235,59 @@ pub fn expression<'tokens, 'src: 'tokens>(
 
         // Expression
         choice((
-            relational_expression__post_unary_expression
-                .clone()
-                .then(st("&&").to(BinaryOperator::ShortCircuit(ShortCircuitOperator::And)))
-                .then(
-                    relational_expression__post_unary_expression
-                        .clone()
-                        .foldl(make_unary("&&", ShortCircuitOperator::And), make_rel),
-                )
-                .map(|((lhs, op), rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs))),
-            relational_expression__post_unary_expression
-                .clone()
-                .then(st("||").to(BinaryOperator::ShortCircuit(ShortCircuitOperator::Or)))
-                .then(
-                    relational_expression__post_unary_expression
-                        .clone()
-                        .foldl(make_unary("||", ShortCircuitOperator::Or), make_rel),
-                )
-                .map(|((lhs, op), rhs)| Expression::Binary(Box::new(lhs), op, Box::new(rhs))),
+            relational_expression__post_unary_expression.clone().foldl(
+                make_unary("&&", ShortCircuitOperator::And).at_least(1),
+                make_rel,
+            ),
+            relational_expression__post_unary_expression.clone().foldl(
+                make_unary("||", ShortCircuitOperator::Or).at_least(1),
+                make_rel,
+            ),
             relational_expression__post_unary_expression.clone(),
             bitwise_expression__post_unary_expression,
+            unary_expression,
         ))
     })
 }
 
-pub fn template_elaborated_ident__post_ident<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
-       + Clone {
-    let ident = select!(Token::Ident(ident) => Ident(ident.to_owned()));
-
-    let template_args = expression()
+pub fn template_list<'tokens, 'src: 'tokens>(
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateList, RichErr<'src, 'tokens>> + Clone
+{
+    expression
+        .clone()
         .separated_by(just(Token::SyntaxToken(",")))
         .allow_trailing()
         .at_least(1)
         .collect()
         .delimited_by(just(Token::TemplateArgsStart), just(Token::TemplateArgsEnd))
-        .map(TemplateList);
+        .map(TemplateList)
+}
+
+pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
+       + Clone {
+    let ident = select!(Token::Ident(ident) => Ident(ident.to_owned()));
+    let template_list = template_list(expression);
 
     ident
-        .then(template_args.or_not())
+        .then(template_list.or_not())
         .map(|(ident, template)| TemplateElaboratedIdent(ident, template))
 }
 
 pub fn call_expression<'tokens, 'src: 'tokens>(
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallPhrase, RichErr<'src, 'tokens>> + Clone {
-    template_elaborated_ident__post_ident()
+    template_elaborated_ident(expression.clone())
         .then(
-            expression()
+            expression
                 .separated_by(st(","))
                 .allow_trailing()
                 .collect()
@@ -247,9 +299,10 @@ pub fn call_expression<'tokens, 'src: 'tokens>(
 
 #[allow(non_snake_case)]
 pub fn primary_expression<'tokens, 'src: 'tokens>(
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+        + Clone
+        + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    let expression = expression();
-
     let paren_expression = expression
         .clone()
         .delimited_by(st("("), st(")"))
@@ -260,8 +313,8 @@ pub fn primary_expression<'tokens, 'src: 'tokens>(
     choice((
         paren_expression,
         literal,
-        call_expression().map(Expression::CallExpression),
-        template_elaborated_ident__post_ident().map(Expression::TemplateElaboratedIdent),
+        call_expression(expression.clone()).map(Expression::CallExpression),
+        template_elaborated_ident(expression.clone()).map(Expression::TemplateElaboratedIdent),
     ))
 }
 

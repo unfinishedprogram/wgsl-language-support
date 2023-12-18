@@ -1462,7 +1462,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 // ============================
 
 // https://gist.github.com/munrocket/236ed5ba7e409b8bdf1ff6eca5dcdc39
-//  MIT License. © Ian McEwan, Stefan Gustavson, Munrocket
+//  MIT License. (c) Ian McEwan, Stefan Gustavson, Munrocket
 // - Less condensed glsl implementation with comments can be found at https://weber.itn.liu.se/~stegu/jgt2012/article.pdf
 
 fn permute3(x: vec3<f32>) -> vec3<f32> { return (((x * 34.) + 1.) * x) % vec3<f32>(289.); }
@@ -1755,7 +1755,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 }/* Simple test for multiple output sources from fragment shaders */
 struct FragmentOutput{
     @location(0) color: vec4<f32>,
-    @location(0) @second_blend_source mask: vec4<f32>,
+    @location(0) mask: vec4<f32>,
 }
 @fragment
 fn main(@builtin(position) position: vec4<f32>) -> FragmentOutput {
@@ -1790,7 +1790,7 @@ fn main(in: FragmentIn) -> @location(0) vec4<f32> {
 @vertex
 fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
     let x = f32(i32(in_vertex_index) - 1);
-    let y = f32(i32(in_vertex_index & 1u) * 2 - 1);
+    let y = f32(i32((in_vertex_index) | 1u) * 2 - 1);
     return vec4<f32>(x, y, 0.0, 1.0);
 }
 

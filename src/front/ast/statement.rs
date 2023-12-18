@@ -18,6 +18,7 @@ use super::{
     },
     ParserInput, RichErr, Token,
 };
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Statement {
     Trivia,

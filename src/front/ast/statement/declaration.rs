@@ -3,7 +3,10 @@ use chumsky::prelude::*;
 use crate::front::{
     ast::{
         attribute::Attribute,
-        expression::{Expression, TemplateElaboratedIdent, TemplateList},
+        expression::{
+            expression, template_elaborated_ident, template_list, Expression,
+            TemplateElaboratedIdent, TemplateList,
+        },
         ParserInput, RichErr,
     },
     token::{Keyword, Token},
@@ -82,7 +85,8 @@ pub fn variable_or_value_decl<'tokens, 'src: 'tokens>(
                 ident,
                 initial_value,
             },
-        );
+        )
+        .boxed();
 
     let module_const = just(Token::Keyword(Keyword::Const))
         .ignore_then(optionally_typed_ident(expression()))
@@ -94,7 +98,7 @@ pub fn variable_or_value_decl<'tokens, 'src: 'tokens>(
         .then(just(Token::SyntaxToken("=")).ignore_then(expression()))
         .map(|(ident, value)| Declaration::LocalConstant { ident, value });
 
-    choice((variable_decl, module_const, local_const))
+    choice((variable_decl, module_const, local_const)).boxed()
 }
 
 fn type_alias_decl<'tokens, 'src: 'tokens>(
@@ -103,6 +107,7 @@ fn type_alias_decl<'tokens, 'src: 'tokens>(
         .ignore_then(select!(Token::Ident(ident) => ident.to_owned()))
         .then(just(Token::SyntaxToken("=")).ignore_then(template_elaborated_ident(expression())))
         .map(|(ident, value)| Declaration::TypeAlias { ident, value })
+        .boxed()
 }
 
 fn struct_decl<'tokens, 'src: 'tokens>(
@@ -115,13 +120,15 @@ fn struct_decl<'tokens, 'src: 'tokens>(
             attributes,
             ident,
             value,
-        });
+        })
+        .boxed();
 
     let struct_body = struct_member
         .separated_by(just(Token::SyntaxToken(",")))
         .allow_trailing()
         .collect()
-        .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")));
+        .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")))
+        .boxed();
 
     Attribute::list_parser()
         .then(
@@ -134,6 +141,7 @@ fn struct_decl<'tokens, 'src: 'tokens>(
             ident,
             members,
         })
+        .boxed()
 }
 
 fn function_decl<'tokens, 'src: 'tokens>(
@@ -149,7 +157,8 @@ fn function_decl<'tokens, 'src: 'tokens>(
             attributes,
             ident,
             value,
-        });
+        })
+        .boxed();
 
     let param_list = param
         .separated_by(just(Token::SyntaxToken(",")))
@@ -159,7 +168,8 @@ fn function_decl<'tokens, 'src: 'tokens>(
 
     let return_type = just(Token::SyntaxToken("->"))
         .ignore_then(Attribute::list_parser().then(template_elaborated_ident(expression())))
-        .or_not();
+        .or_not()
+        .boxed();
 
     Attribute::list_parser()
         .then(
@@ -178,6 +188,7 @@ fn function_decl<'tokens, 'src: 'tokens>(
                 body,
             },
         )
+        .boxed()
 }
 
 pub fn declaration<'tokens, 'src: 'tokens>(
@@ -186,7 +197,7 @@ pub fn declaration<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
     // TODO: Make semicolon shared parser.
-    let semi = just(Token::SyntaxToken(";"));
+    let semi = just(Token::SyntaxToken(";")).labelled("semicolon");
     choice((
         variable_or_value_decl().then_ignore(semi.clone()),
         type_alias_decl().then_ignore(semi.clone()),
