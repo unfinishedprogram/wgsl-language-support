@@ -50,9 +50,14 @@ pub enum Expression {
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
 }
 
+pub fn st<'tokens, 'src: 'tokens>(
+    t: &'src str,
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Token, RichErr<'src, 'tokens>> + Clone {
+    just(Token::SyntaxToken(t))
+}
+
 pub fn expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
-    let st = |t| just(Token::SyntaxToken(t));
     let ident_str = select!(Token::Ident(ident) => ident.to_owned());
     let primary_expression = primary_expression();
     recursive(|expression| {
@@ -208,56 +213,55 @@ pub fn expression<'tokens, 'src: 'tokens>(
     })
 }
 
+pub fn template_elaborated_ident__post_ident<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
+       + Clone {
+    let ident = select!(Token::Ident(ident) => Ident(ident.to_owned()));
+
+    let template_args = expression()
+        .separated_by(just(Token::SyntaxToken(",")))
+        .allow_trailing()
+        .at_least(1)
+        .collect()
+        .delimited_by(just(Token::TemplateArgsStart), just(Token::TemplateArgsEnd))
+        .map(TemplateList);
+
+    ident
+        .then(template_args.or_not())
+        .map(|(ident, template)| TemplateElaboratedIdent(ident, template))
+}
+
+pub fn call_expression<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallPhrase, RichErr<'src, 'tokens>> + Clone {
+    template_elaborated_ident__post_ident()
+        .then(
+            expression()
+                .separated_by(st(","))
+                .allow_trailing()
+                .collect()
+                .delimited_by(st("("), st(")"))
+                .map(ArgumentExpressionList),
+        )
+        .map(|(ident, args)| CallPhrase(ident, args))
+}
+
 #[allow(non_snake_case)]
 pub fn primary_expression<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
     let expression = expression();
 
-    let st = |t| just(Token::SyntaxToken(t));
-    let ident = select!(Token::Ident(ident) => Ident(ident.to_owned()));
-
-    let template_elaborated_ident__post_ident = just(Token::TemplateArgsStart)
-        .ignore_then(
-            expression
-                .clone()
-                .separated_by(just(Token::SyntaxToken(",")))
-                .allow_trailing()
-                .at_least(1)
-                .collect(),
-        )
-        .then_ignore(just(Token::TemplateArgsEnd))
-        .map(TemplateList)
-        .or_not();
+    let paren_expression = expression
+        .clone()
+        .delimited_by(st("("), st(")"))
+        .map(Box::new)
+        .map(Expression::ParenExpression);
+    let literal = select!(Token::Literal(lit) => Expression::Literal(lit));
 
     choice((
-        expression
-            .clone()
-            .delimited_by(st("("), st(")"))
-            .map(Box::new)
-            .map(Expression::ParenExpression),
-        select!(Token::Literal(lit) => Expression::Literal(lit)),
-        ident
-            .then(template_elaborated_ident__post_ident.clone())
-            .then(
-                expression
-                    .clone()
-                    .separated_by(st(","))
-                    .allow_trailing()
-                    .collect()
-                    .delimited_by(st("("), st(")")),
-            )
-            .map(|((ident, template), args)| {
-                CallPhrase(
-                    TemplateElaboratedIdent(ident, template),
-                    ArgumentExpressionList(args),
-                )
-            })
-            .map(Expression::CallExpression),
-        ident
-            .then(template_elaborated_ident__post_ident)
-            .map(|(ident, template)| {
-                Expression::TemplateElaboratedIdent(TemplateElaboratedIdent(ident, template))
-            }),
+        paren_expression,
+        literal,
+        call_expression().map(Expression::CallExpression),
+        template_elaborated_ident__post_ident().map(Expression::TemplateElaboratedIdent),
     ))
 }
 
