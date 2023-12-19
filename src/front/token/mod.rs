@@ -54,5 +54,42 @@ pub enum Keyword {
     While,
 }
 
+impl From<Keyword> for &'static str {
+    fn from(val: Keyword) -> Self {
+        match val {
+            Keyword::Alias => "alias",
+            Keyword::Break => "break",
+            Keyword::Case => "case",
+            Keyword::Const => "const",
+            Keyword::ConstAssert => "const_assert",
+            Keyword::Continue => "continue",
+            Keyword::Continuing => "continuing",
+            Keyword::Default => "default",
+            Keyword::Diagnostic => "diagnostic",
+            Keyword::Discard => "discard",
+            Keyword::Else => "else",
+            Keyword::Enable => "enable",
+            Keyword::Fn => "fn",
+            Keyword::For => "for",
+            Keyword::If => "if",
+            Keyword::Let => "let",
+            Keyword::Loop => "loop",
+            Keyword::Override => "override",
+            Keyword::Requires => "requires",
+            Keyword::Return => "return",
+            Keyword::Struct => "struct",
+            Keyword::Switch => "switch",
+            Keyword::Var => "var",
+            Keyword::While => "while",
+        }
+    }
+}
+
+impl From<Keyword> for String {
+    fn from(val: Keyword) -> Self {
+        Into::<&str>::into(val).to_owned()
+    }
+}
+
 // A rich error type only for the tokenization step
 type RichErr<'src> = extra::Err<Rich<'src, char, Span>>;
