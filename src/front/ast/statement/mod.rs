@@ -1,3 +1,4 @@
+pub mod attribute;
 pub mod declaration;
 
 use chumsky::prelude::*;
@@ -5,9 +6,9 @@ use chumsky::prelude::*;
 use crate::front::token::Keyword;
 
 use self::declaration::{declaration, variable_or_value_decl, Declaration};
+use attribute::Attribute;
 
 use super::{
-    attribute::Attribute,
     expression::{
         call_expression, expression, lhs_expression,
         relational_expression::{

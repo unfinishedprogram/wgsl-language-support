@@ -2,7 +2,7 @@ use chumsky::prelude::*;
 
 use crate::front::token::Keyword;
 
-use super::{
+use crate::front::ast::{
     expression::{expression, Expression},
     ParserInput, RichErr, Token,
 };

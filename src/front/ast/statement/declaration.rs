@@ -1,8 +1,9 @@
 use chumsky::prelude::*;
 
+use super::attribute::Attribute;
+
 use crate::front::{
     ast::{
-        attribute::Attribute,
         expression::{
             expression, template_elaborated_ident, template_list, Expression,
             TemplateElaboratedIdent, TemplateList,
