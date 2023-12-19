@@ -41,12 +41,12 @@ pub struct ArgumentExpressionList(Vec<Expression>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     None,
-    TemplateElaboratedIdent(TemplateElaboratedIdent),
+    Ident(TemplateElaboratedIdent),
     CallExpression(CallPhrase),
     Literal(Literal),
     ParenExpression(Box<Expression>),
     Unary(UnaryOperator, Box<Expression>),
-    Singular(Box<Expression>, Option<ComponentOrSwizzleSpecifier>),
+    Singular(Box<Expression>, ComponentOrSwizzleSpecifier),
     Binary(Box<Expression>, BinaryOperator, Box<Expression>),
 }
 
@@ -94,7 +94,10 @@ pub fn expression<'tokens, 'src: 'tokens>(
             select!(Token::Literal(lit) => Expression::Literal(lit)),
             primary_expression(expression.clone())
                 .then(component_or_swizzle_specifier(expression.clone()).or_not())
-                .map(|(expr, comp_or_swizz)| Expression::Singular(Box::new(expr), comp_or_swizz)),
+                .map(|(expr, comp_or_swizz)| match comp_or_swizz {
+                    Some(comp_or_swizz) => Expression::Singular(Box::new(expr), comp_or_swizz),
+                    None => expr,
+                }),
         ));
 
         let unary_expression = {
@@ -318,7 +321,7 @@ pub fn primary_expression<'tokens, 'src: 'tokens>(
         paren_expression,
         literal,
         call_expression(expression.clone()).map(Expression::CallExpression),
-        template_elaborated_ident(expression.clone()).map(Expression::TemplateElaboratedIdent),
+        template_elaborated_ident(expression.clone()).map(Expression::Ident),
     ))
 }
 
