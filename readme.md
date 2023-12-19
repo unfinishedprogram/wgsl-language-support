@@ -15,3 +15,5 @@ cargo clean; cargo build --release;
 | Date       | Debug  | Release |
 | ---------- | ------ | ------- |
 | 12/18/2023 | 13.47s | 48.63s  |
+|            | 39.66s | 50.49s  |
+|            | 29.17s | 40.86s  |

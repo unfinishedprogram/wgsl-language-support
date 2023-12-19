@@ -250,6 +250,7 @@ pub fn expression<'tokens, 'src: 'tokens>(
             relational_expression__post_unary_expression.clone(),
             unary_expression,
         ))
+        .boxed()
     })
 }
 

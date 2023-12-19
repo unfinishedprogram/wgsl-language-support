@@ -52,4 +52,5 @@ pub fn ident<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>>
             Token::Ident("while") => Token::Keyword(Keyword::While),
             v => v,
         })
+        .boxed()
 }

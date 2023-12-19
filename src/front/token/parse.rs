@@ -107,7 +107,7 @@ pub fn trivia<'src>() -> impl Parser<'src, &'src str, Token<'src>, RichErr<'src>
     }
     .to(Token::Trivia);
 
-    choice((line_comment, block_comment))
+    choice((line_comment, block_comment)).boxed()
 }
 
 pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)>, RichErr<'src>> {
@@ -122,4 +122,5 @@ pub fn tokenizer<'src>() -> impl Parser<'src, &'src str, Vec<(Token<'src>, Span)
         .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
         .collect()
+        .boxed()
 }

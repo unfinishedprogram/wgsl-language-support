@@ -9,7 +9,7 @@ use self::declaration::{declaration, variable_or_value_decl, Declaration};
 use super::{
     attribute::Attribute,
     expression::{
-        call_expression, core_lhs_expression, expression, lhs_expression,
+        call_expression, expression, lhs_expression,
         relational_expression::{
             AdditiveOperator, BinaryOperator, BitwiseOperator, MultiplicativeOperator,
             ShiftOperator,
@@ -149,6 +149,7 @@ fn assignment_statement<'tokens, 'src: 'tokens>(
         .then(expression())
         .map(|((lhs, operator), rhs)| Statement::Assignment(lhs, operator, rhs))
         .labelled("assignment statement")
+        .boxed()
 }
 
 fn inc_dec_statement<'tokens, 'src: 'tokens>(
@@ -164,6 +165,7 @@ fn inc_dec_statement<'tokens, 'src: 'tokens>(
             _ => unreachable!(),
         })
         .labelled("increment/decrement statement")
+        .boxed()
 }
 
 fn return_statement<'tokens, 'src: 'tokens>(
@@ -172,6 +174,7 @@ fn return_statement<'tokens, 'src: 'tokens>(
         .ignore_then(expression().or_not())
         .map(Statement::Return)
         .labelled("return statement")
+        .boxed()
 }
 
 fn discard_statement<'tokens, 'src: 'tokens>(
@@ -179,6 +182,7 @@ fn discard_statement<'tokens, 'src: 'tokens>(
     just(Token::Keyword(Keyword::Discard))
         .to(Statement::Discard)
         .labelled("discard statement")
+        .boxed()
 }
 
 fn break_statement<'tokens, 'src: 'tokens>(
@@ -190,7 +194,9 @@ fn break_statement<'tokens, 'src: 'tokens>(
         .ignore_then(expression())
         .map(Statement::BreakIf);
 
-    choice((break_if, just_break)).labelled("break statement")
+    choice((break_if, just_break))
+        .labelled("break statement")
+        .boxed()
 }
 
 fn continue_statement<'tokens, 'src: 'tokens>(
@@ -198,6 +204,7 @@ fn continue_statement<'tokens, 'src: 'tokens>(
     just(Token::Keyword(Keyword::Continue))
         .to(Statement::Continue)
         .labelled("continue statement")
+        .boxed()
 }
 
 fn compound_statement<'tokens, 'src: 'tokens>(
@@ -214,6 +221,7 @@ fn compound_statement<'tokens, 'src: 'tokens>(
         .collect()
         .delimited_by(just(Token::SyntaxToken("{")), just(Token::SyntaxToken("}")))
         .labelled("compound statement")
+        .boxed()
 }
 
 fn loop_statement<'tokens, 'src: 'tokens>(
@@ -237,6 +245,7 @@ fn loop_statement<'tokens, 'src: 'tokens>(
             },
         )
         .labelled("loop statement")
+        .boxed()
 }
 
 fn for_statement<'tokens, 'src: 'tokens>(
@@ -249,13 +258,15 @@ fn for_statement<'tokens, 'src: 'tokens>(
         assignment_statement(),
         inc_dec_statement(),
         call_expression(expression()).map(Statement::FuncCall),
-    ));
+    ))
+    .boxed();
 
     let update = choice((
         call_expression(expression()).map(Statement::FuncCall),
         assignment_statement(),
         inc_dec_statement(),
-    ));
+    ))
+    .boxed();
 
     let header = init
         .or_not()
@@ -263,7 +274,8 @@ fn for_statement<'tokens, 'src: 'tokens>(
         .then(expression().or_not())
         .then_ignore(just(Token::SyntaxToken(";")))
         .then(update.or_not())
-        .map(|((a, b), c)| (a, b, c));
+        .map(|((a, b), c)| (a, b, c))
+        .boxed();
 
     Attribute::list_parser()
         .then_ignore(just(Token::Keyword(Keyword::For)))
@@ -279,6 +291,7 @@ fn for_statement<'tokens, 'src: 'tokens>(
             },
         )
         .labelled("for statement")
+        .boxed()
 }
 
 fn while_statement<'tokens, 'src: 'tokens>(
@@ -296,6 +309,7 @@ fn while_statement<'tokens, 'src: 'tokens>(
             body,
         })
         .labelled("while statement")
+        .boxed()
 }
 
 fn continuing_statement<'tokens, 'src: 'tokens>(
@@ -308,6 +322,7 @@ fn continuing_statement<'tokens, 'src: 'tokens>(
         .then(compound_statement(stmt.clone()))
         .map(|(attributes, body)| Statement::Continuing(attributes, body))
         .labelled("continuing statement")
+        .boxed()
 }
 
 fn if_statement<'tokens, 'src: 'tokens>(
@@ -317,12 +332,14 @@ fn if_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
     let if_clause = just(Token::Keyword(Keyword::If))
         .ignore_then(expression())
-        .then(compound_statement(stmt.clone()));
+        .then(compound_statement(stmt.clone()))
+        .boxed();
 
     let else_if_clause = just(Token::Keyword(Keyword::Else))
         .ignore_then(just(Token::Keyword(Keyword::If)))
         .ignore_then(expression())
-        .then(compound_statement(stmt.clone()));
+        .then(compound_statement(stmt.clone()))
+        .boxed();
 
     let else_clause =
         just(Token::Keyword(Keyword::Else)).ignore_then(compound_statement(stmt.clone()));
@@ -334,6 +351,7 @@ fn if_statement<'tokens, 'src: 'tokens>(
             Statement::If((if_expr, if_body), else_ifs, else_body)
         })
         .labelled("if statement")
+        .boxed()
 }
 
 fn switch_statement<'tokens, 'src: 'tokens>(
@@ -356,6 +374,7 @@ fn switch_statement<'tokens, 'src: 'tokens>(
             body,
         })
         .labelled("switch statement")
+        .boxed()
 }
 
 fn optionally_typed_ident<'tokens, 'src: 'tokens>(
@@ -373,6 +392,7 @@ fn optionally_typed_ident<'tokens, 'src: 'tokens>(
                 .or_not(),
         )
         .map(|(ident, type_specifier)| OptionallyTypedIdent(ident, type_specifier))
+        .boxed()
 }
 
 pub fn statement<'tokens, 'src: 'tokens>(
@@ -402,4 +422,5 @@ pub fn statement<'tokens, 'src: 'tokens>(
         .memoized()
     })
     .labelled("statement")
+    .boxed()
 }
