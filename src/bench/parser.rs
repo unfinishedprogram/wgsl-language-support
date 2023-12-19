@@ -12,21 +12,6 @@ pub struct BenchResult {
     pub name: &'static str,
 }
 
-// Benchmarks tokenization speed
-pub fn bench_tokenize(source: &str) -> (Duration, usize) {
-    let start = std::time::Instant::now();
-    let token_result = front::module::tokenize(source);
-    let end = std::time::Instant::now();
-    (end - start, token_result.tokens.len())
-}
-
-pub fn bench_once(source: &str) -> (Duration, usize) {
-    let start = std::time::Instant::now();
-    let token_result = front::module::tokenize(source);
-    let end = std::time::Instant::now();
-    (end - start, token_result.tokens.len())
-}
-
 pub fn bench_all(source: &str, name: &'static str, repeat_times: usize) -> BenchResult {
     let source = source.repeat(repeat_times);
 
