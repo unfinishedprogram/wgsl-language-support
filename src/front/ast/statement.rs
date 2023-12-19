@@ -153,7 +153,7 @@ fn assignment_statement<'tokens, 'src: 'tokens>(
 
 fn inc_dec_statement<'tokens, 'src: 'tokens>(
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
-    core_lhs_expression(lhs_expression())
+    lhs_expression()
         .then(choice((
             just(Token::SyntaxToken("++")),
             just(Token::SyntaxToken("--")),

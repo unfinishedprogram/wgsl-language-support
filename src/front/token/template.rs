@@ -179,17 +179,57 @@ pub fn insert_template_delimiters(src: &str) -> String {
         .collect()
 }
 
-pub fn insert_template_tokens(source: &str, tokens: &mut [(Token, Span)]) {
+pub fn insert_template_tokens(source: &str, tokens: &mut Vec<(Token, Span)>) {
     let templates = find_templates(source);
-    for (token, span) in tokens {
-        for (start, end) in &templates {
-            if span.start == *start {
-                *token = Token::TemplateArgsStart;
-            } else if span.start == *end {
-                *token = Token::TemplateArgsEnd;
+
+    let is_start = |pos| templates.iter().any(|(start, _)| *start == pos);
+    let is_end = |pos| templates.iter().any(|(_, end)| *end == pos);
+
+    let mut res_tokens: Vec<(Token, Span)> = vec![];
+
+    for (token, span) in tokens.iter() {
+        if matches!(token, Token::SyntaxToken("<<") | Token::SyntaxToken(">>")) {
+            let ident = match token {
+                Token::SyntaxToken("<<") => Token::TemplateArgsStart,
+                Token::SyntaxToken(">>") => Token::TemplateArgsEnd,
+                _ => unreachable!(),
+            };
+
+            let (left, right) = (span.start, span.start + 1);
+            let (left_tok, right_tok) = (Token::SyntaxToken("<"), Token::SyntaxToken(">"));
+            let (left_span, right_span) = (Span::new(left, left + 1), Span::new(right, right + 1));
+
+            match (
+                is_end(left) || is_start(left),
+                is_end(right) || is_start(right),
+            ) {
+                (true, true) => {
+                    res_tokens.push((ident.clone(), left_span));
+                    res_tokens.push((ident.clone(), right_span));
+                    continue;
+                }
+                (true, false) => {
+                    res_tokens.push((ident.clone(), left_span));
+                    res_tokens.push((right_tok.clone(), right_span));
+                    continue;
+                }
+                (false, true) => {
+                    res_tokens.push((left_tok.clone(), left_span));
+                    res_tokens.push((ident.clone(), right_span));
+                    continue;
+                }
+                _ => {}
             }
+        } else if is_start(span.start) {
+            res_tokens.push((Token::TemplateArgsStart, *span));
+            continue;
+        } else if is_end(span.start) {
+            res_tokens.push((Token::TemplateArgsEnd, *span));
+            continue;
         }
+
+        res_tokens.push((token.clone(), *span));
     }
 
-    // Replace the characters in the template with special chars that are unlikely to be otherwise used
+    *tokens = res_tokens;
 }

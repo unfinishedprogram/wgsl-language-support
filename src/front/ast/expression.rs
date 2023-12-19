@@ -174,12 +174,15 @@ pub fn expression<'tokens, 'src: 'tokens>(
                 |prev, (op, next)| Expression::Binary(Box::new(prev), op, Box::new(next)),
             );
 
-            let additive_fold = multiplicative_fold.clone().foldl(
-                additive_operator
-                    .then(multiplicative_fold.clone())
-                    .repeated(),
-                |prev, (op, next)| Expression::Binary(Box::new(prev), op, Box::new(next)),
-            );
+            let additive_fold = multiplicative_fold
+                .clone()
+                .foldl(
+                    additive_operator
+                        .then(multiplicative_fold.clone())
+                        .repeated(),
+                    |prev, (op, next)| Expression::Binary(Box::new(prev), op, Box::new(next)),
+                )
+                .boxed();
 
             let shift = unary_expression
                 .clone()
@@ -243,8 +246,8 @@ pub fn expression<'tokens, 'src: 'tokens>(
                 make_unary("||", ShortCircuitOperator::Or).at_least(1),
                 make_rel,
             ),
-            relational_expression__post_unary_expression.clone(),
             bitwise_expression__post_unary_expression,
+            relational_expression__post_unary_expression.clone(),
             unary_expression,
         ))
     })

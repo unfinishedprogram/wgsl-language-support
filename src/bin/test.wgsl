@@ -3211,13 +3211,6 @@ fn main() {
     let g = Mat3(a, a, a);
 }
 
-layout(set = 0, binding = 0) uniform textureCube texCube;
-layout(set = 0, binding = 1) uniform sampler samp;
-
-void main() {
-    ivec2 sizeCube = textureSize(samplerCube(texCube, samp), 0);
-    float a = ceil(1.0);
-}
 const SIZE: u32 = 128u;
 
 var<workgroup> arr_i32: array<i32, SIZE>;
