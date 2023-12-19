@@ -5,9 +5,11 @@ fn main() {
     let token_result = tokenize(source);
     let ast_result = create_ast(&token_result);
 
-    dbg!(token_result.tokens.len());
+    // dbg!(token_result.tokens.len());
     // dbg!(&token_result.tokens);
-    dbg!(&ast_result.ast);
+    // dbg!(&ast_result.ast);
+
+    println!("{:#?}", ast_result);
 
     let mut colors = ColorGenerator::new();
 

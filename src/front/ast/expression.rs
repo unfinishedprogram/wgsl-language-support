@@ -113,7 +113,7 @@ pub fn expression<'tokens, 'src: 'tokens>(
         }
         .boxed();
 
-        let bitwise_expression__post_unary_expression = {
+        let bitwise_expression_post_unary_expression = {
             let make_rel =
                 |prev, (op, next)| Expression::Binary(Box::new(prev), op, Box::new(next));
 
@@ -144,7 +144,7 @@ pub fn expression<'tokens, 'src: 'tokens>(
         }
         .boxed();
 
-        let shift_expression__post_unary_expression = {
+        let shift_expression_post_unary_expression = {
             let multiplicative_operator = choice((
                 st("*").to(BinaryOperator::Multiplicative(
                     MultiplicativeOperator::Multiply,
@@ -196,7 +196,7 @@ pub fn expression<'tokens, 'src: 'tokens>(
         }
         .boxed();
 
-        let relational_expression__post_unary_expression = {
+        let relational_expression_post_unary_expression = {
             use RelationalOperator::*;
 
             let ops = choice((
@@ -208,15 +208,15 @@ pub fn expression<'tokens, 'src: 'tokens>(
                 st(">").to(GreaterThan),
             ));
 
-            let relational_ops = shift_expression__post_unary_expression
+            let relational_ops = shift_expression_post_unary_expression
                 .clone()
                 .then(ops)
-                .then(shift_expression__post_unary_expression.clone())
+                .then(shift_expression_post_unary_expression.clone())
                 .map(|((lhs, op), rhs)| {
                     Expression::Binary(Box::new(lhs), BinaryOperator::Relational(op), Box::new(rhs))
                 });
 
-            choice((relational_ops, shift_expression__post_unary_expression))
+            choice((relational_ops, shift_expression_post_unary_expression))
         }
         .boxed();
 
@@ -238,16 +238,16 @@ pub fn expression<'tokens, 'src: 'tokens>(
 
         // Expression
         choice((
-            relational_expression__post_unary_expression.clone().foldl(
+            relational_expression_post_unary_expression.clone().foldl(
                 make_unary("&&", ShortCircuitOperator::And).at_least(1),
                 make_rel,
             ),
-            relational_expression__post_unary_expression.clone().foldl(
+            relational_expression_post_unary_expression.clone().foldl(
                 make_unary("||", ShortCircuitOperator::Or).at_least(1),
                 make_rel,
             ),
-            bitwise_expression__post_unary_expression,
-            relational_expression__post_unary_expression.clone(),
+            bitwise_expression_post_unary_expression,
+            relational_expression_post_unary_expression.clone(),
             unary_expression,
         ))
         .boxed()
