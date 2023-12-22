@@ -1,6 +1,4 @@
-use chumsky::{error::Rich, extra};
-
-use super::Span;
+use chumsky::{error::Rich, extra, span::SimpleSpan};
 
 mod ident;
 pub use ident::ident;
@@ -92,4 +90,4 @@ impl From<Keyword> for String {
 }
 
 // A rich error type only for the tokenization step
-type RichErr<'src> = extra::Err<Rich<'src, char, Span>>;
+type RichErr<'src> = extra::Err<Rich<'src, char, SimpleSpan>>;

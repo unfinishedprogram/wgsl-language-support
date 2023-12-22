@@ -1,4 +1,4 @@
-use crate::front::Span;
+use chumsky::span::SimpleSpan;
 
 use super::Token;
 
@@ -179,13 +179,13 @@ pub fn insert_template_delimiters(src: &str) -> String {
         .collect()
 }
 
-pub fn insert_template_tokens(source: &str, tokens: &mut Vec<(Token, Span)>) {
+pub fn insert_template_tokens(source: &str, tokens: &mut Vec<(Token, SimpleSpan)>) {
     let templates = find_templates(source);
 
     let is_start = |pos| templates.iter().any(|(start, _)| *start == pos);
     let is_end = |pos| templates.iter().any(|(_, end)| *end == pos);
 
-    let mut res_tokens: Vec<(Token, Span)> = vec![];
+    let mut res_tokens: Vec<(Token, SimpleSpan)> = vec![];
 
     for (token, span) in tokens.iter() {
         if matches!(token, Token::SyntaxToken("<<") | Token::SyntaxToken(">>")) {
@@ -197,7 +197,10 @@ pub fn insert_template_tokens(source: &str, tokens: &mut Vec<(Token, Span)>) {
 
             let (left, right) = (span.start, span.start + 1);
             let (left_tok, right_tok) = (Token::SyntaxToken("<"), Token::SyntaxToken(">"));
-            let (left_span, right_span) = (Span::new(left, left + 1), Span::new(right, right + 1));
+            let (left_span, right_span) = (
+                SimpleSpan::new(left, left + 1),
+                SimpleSpan::new(right, right + 1),
+            );
 
             match (
                 is_end(left) || is_start(left),

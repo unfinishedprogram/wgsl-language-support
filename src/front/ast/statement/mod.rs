@@ -32,11 +32,11 @@ pub enum Statement {
     Continuing(Vec<Attribute>, Vec<Statement>),
     Break,
     BreakIf(Expression),
-    If(
-        (Expression, Vec<Statement>),
-        Vec<(Expression, Vec<Statement>)>,
-        Option<Vec<Statement>>,
-    ),
+    If {
+        if_block: (Expression, Vec<Statement>),
+        else_if_blocks: Vec<(Expression, Vec<Statement>)>,
+        else_block: Option<Vec<Statement>>,
+    },
     Declaration(Declaration),
     FuncCall(CallPhrase),
     Discard,
@@ -348,8 +348,10 @@ fn if_statement<'tokens, 'src: 'tokens>(
     if_clause
         .then(else_if_clause.repeated().collect())
         .then(else_clause.or_not())
-        .map(|(((if_expr, if_body), else_ifs), else_body)| {
-            Statement::If((if_expr, if_body), else_ifs, else_body)
+        .map(|((if_block, else_if_blocks), else_block)| Statement::If {
+            if_block,
+            else_if_blocks,
+            else_block,
         })
         .labelled("if statement")
         .boxed()
@@ -397,7 +399,8 @@ fn optionally_typed_ident<'tokens, 'src: 'tokens>(
 }
 
 pub fn statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, (Statement, SimpleSpan), RichErr<'src, 'tokens>>
+       + Clone {
     recursive(|this| {
         choice((
             if_statement(this.clone()),
@@ -422,6 +425,7 @@ pub fn statement<'tokens, 'src: 'tokens>(
         ))
         .memoized()
     })
+    .map_with(|stmt, e| (stmt, e.span()))
     .labelled("statement")
     .boxed()
 }

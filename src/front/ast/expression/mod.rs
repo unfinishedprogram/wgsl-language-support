@@ -254,6 +254,12 @@ pub fn expression<'tokens, 'src: 'tokens>(
     })
 }
 
+pub fn spanned_expression<'tokens, 'src: 'tokens>(
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, (Expression, SimpleSpan), RichErr<'src, 'tokens>>
+       + Clone {
+    expression().map_with(|expr, e| (expr, e.span()))
+}
+
 pub fn template_list<'tokens, 'src: 'tokens>(
     expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
         + Clone

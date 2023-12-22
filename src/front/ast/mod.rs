@@ -14,10 +14,10 @@ type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<
 type RichErr<'src, 'tokens> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
 
 pub fn ast_parser<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<(Statement, SimpleSpan)>, RichErr<'src, 'tokens>>
+{
     statement()
         .then_ignore(just(Token::SyntaxToken(";")).or_not())
-        // .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
         .collect()
 }
@@ -58,7 +58,7 @@ pub struct TokenizationResult<'a> {
 
 #[derive(Debug)]
 pub struct AstResult<'a> {
-    pub ast: Vec<Statement>,
+    pub ast: Vec<(Statement, SimpleSpan)>,
     pub errors: Vec<ModuleError<'a>>,
 }
 
