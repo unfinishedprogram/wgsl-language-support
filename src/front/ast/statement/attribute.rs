@@ -38,6 +38,6 @@ impl Attribute {
     pub fn list_parser<'tokens, 'src: 'tokens>(
     ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Self>, RichErr<'src, 'tokens>> + Clone
     {
-        Self::parser().repeated().collect()
+        Self::parser().repeated().collect().labelled("attributes")
     }
 }

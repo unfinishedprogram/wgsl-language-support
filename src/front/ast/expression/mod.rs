@@ -24,10 +24,7 @@ pub struct ComponentOrSwizzleSpecifier(
 );
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ident(String);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TemplateElaboratedIdent(Ident, Option<TemplateList>);
+pub struct TemplateElaboratedIdent(String, Option<TemplateList>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TemplateList(Vec<Expression>);
@@ -279,7 +276,7 @@ pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
         + 'tokens,
 ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
        + Clone {
-    let ident = select!(Token::Ident(ident) => Ident(ident.to_owned()));
+    let ident = select!(Token::Ident(ident) => ident.to_owned());
     let template_list = template_list(expression);
 
     ident
