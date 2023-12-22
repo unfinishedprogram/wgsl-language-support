@@ -1,5 +1,6 @@
 use ariadne::{ColorGenerator, Label, Report, Source};
-use wgsl_ast::front::module::{create_ast, tokenize};
+use wgsl_ast::front::ast::{create_ast, tokenize};
+
 fn main() {
     let source = include_str!("test.wgsl");
     let token_result = tokenize(source);

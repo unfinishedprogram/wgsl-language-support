@@ -1,7 +1,7 @@
 use std::fs;
 
 use ariadne::{ColorGenerator, Label, Report, Source};
-use wgsl_ast::front::module::{create_ast, tokenize};
+use wgsl_ast::front::ast::{create_ast, tokenize};
 fn main() {
     let paths = fs::read_dir("src/test_files")
         .unwrap()

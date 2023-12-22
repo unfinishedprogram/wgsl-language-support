@@ -15,8 +15,8 @@ pub struct BenchResult {
 pub fn bench_all(source: &str, name: &'static str, repeat_times: usize) -> BenchResult {
     let source = source.repeat(repeat_times);
 
-    let (token_result, tokenization) = time_call(|| front::module::tokenize(&source));
-    let (ast_result, ast_parsing) = time_call(|| front::module::create_ast(&token_result));
+    let (token_result, tokenization) = time_call(|| front::ast::tokenize(&source));
+    let (ast_result, ast_parsing) = time_call(|| front::ast::create_ast(&token_result));
 
     let error_count = ast_result.errors.len() + token_result.errors.len();
 
