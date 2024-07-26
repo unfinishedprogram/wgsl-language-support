@@ -6,8 +6,8 @@ rust-version = "1.73"
 edition = "2021"
 
 [dependencies]
-ariadne = "0.3.0"
-chumsky = { version = "1.0.0-alpha.6", features = [
+ariadne = "0.4.1"
+chumsky = { version = "1.0.0-alpha.7", features = [
     "regex",
     "memoization",
     "label",
@@ -17,7 +17,7 @@ regex = "1.10.2"
 unicode-ident = "1.0.12"
 
 [dev-dependencies]
-criterion = { version = "0.4", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 
 [[bench]]
 name = "benchmark"
