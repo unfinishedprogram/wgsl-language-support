@@ -21,9 +21,9 @@ pub enum LHSExpression {
 }
 
 pub fn core_lhs_expression<'tokens, 'src: 'tokens>(
-    lhs_expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'src, 'tokens>>
+    lhs_expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'tokens, 'src>>
         + Clone,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'src, 'tokens>> + Clone
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'tokens, 'src>> + Clone
 {
     choice((
         select! {Token::Ident(ident) => LHSExpression::Ident(ident.to_owned())}.labelled("ident"),
@@ -37,7 +37,7 @@ pub fn core_lhs_expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn lhs_expression<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'src, 'tokens>> + Clone
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, LHSExpression, RichErr<'tokens, 'src>> + Clone
 {
     recursive(|this| {
         choice((

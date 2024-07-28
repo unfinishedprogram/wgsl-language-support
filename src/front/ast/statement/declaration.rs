@@ -69,7 +69,7 @@ pub struct FunctionParameter {
 }
 
 pub fn variable_or_value_decl<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'tokens, 'src>> + Clone {
     let variable_decl = Attribute::list_parser()
         .then_ignore(just(Token::Keyword(Keyword::Var)))
         .then(template_list(expression()).or_not())
@@ -103,7 +103,7 @@ pub fn variable_or_value_decl<'tokens, 'src: 'tokens>(
 }
 
 fn type_alias_decl<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'tokens, 'src>> + Clone {
     just(Token::Keyword(Keyword::Alias))
         .ignore_then(select!(Token::Ident(ident) => ident.to_owned()))
         .then(just(Token::SyntaxToken("=")).ignore_then(template_elaborated_ident(expression())))
@@ -112,7 +112,7 @@ fn type_alias_decl<'tokens, 'src: 'tokens>(
 }
 
 fn struct_decl<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'tokens, 'src>> + Clone {
     let struct_member = Attribute::list_parser()
         .then(select!(Token::Ident(ident) => ident.to_owned()).then(
             just(Token::SyntaxToken(":")).ignore_then(template_elaborated_ident(expression())),
@@ -146,10 +146,10 @@ fn struct_decl<'tokens, 'src: 'tokens>(
 }
 
 fn function_decl<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'tokens, 'src>> + Clone {
     let param = Attribute::list_parser()
         .then(select!(Token::Ident(ident) => ident.to_owned()).then(
             just(Token::SyntaxToken(":")).ignore_then(template_elaborated_ident(expression())),
@@ -193,10 +193,10 @@ fn function_decl<'tokens, 'src: 'tokens>(
 }
 
 pub fn declaration<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Declaration, RichErr<'tokens, 'src>> + Clone {
     // TODO: Make semicolon shared parser.
     let semi = just(Token::SyntaxToken(";")).labelled("semicolon");
     choice((

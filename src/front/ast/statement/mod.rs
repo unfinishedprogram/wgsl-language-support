@@ -78,8 +78,7 @@ pub enum CaseClause {
 
 impl CaseClause {
     pub fn parser<'tokens, 'src: 'tokens>(
-    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Self, RichErr<'src, 'tokens>> + Clone
-    {
+    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Self, RichErr<'tokens, 'src>> + Clone {
         let case = expression().map(CaseClause::Expression);
 
         let default = just(Token::Keyword(Keyword::Default)).to(CaseClause::Default);
@@ -90,11 +89,10 @@ impl CaseClause {
 
 impl SwitchClause {
     pub fn parser<'tokens, 'src: 'tokens>(
-        stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+        stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
             + Clone
             + 'tokens,
-    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Self, RichErr<'src, 'tokens>> + Clone
-    {
+    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Self, RichErr<'tokens, 'src>> + Clone {
         let case_clause = just(Token::Keyword(Keyword::Case))
             .ignore_then(
                 CaseClause::parser()
@@ -126,7 +124,7 @@ pub enum AssignmentOperator {
 pub struct OptionallyTypedIdent(String, Option<TemplateElaboratedIdent>);
 
 fn assignment_operator<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, AssignmentOperator, RichErr<'src, 'tokens>> + Clone
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, AssignmentOperator, RichErr<'tokens, 'src>> + Clone
 {
     select! {
         Token::SyntaxToken("=") => AssignmentOperator::Simple,
@@ -144,7 +142,7 @@ fn assignment_operator<'tokens, 'src: 'tokens>(
 }
 
 fn assignment_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     lhs_expression()
         .then(assignment_operator())
         .then(expression())
@@ -154,7 +152,7 @@ fn assignment_statement<'tokens, 'src: 'tokens>(
 }
 
 fn inc_dec_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     lhs_expression()
         .then(choice((
             just(Token::SyntaxToken("++")),
@@ -170,7 +168,7 @@ fn inc_dec_statement<'tokens, 'src: 'tokens>(
 }
 
 fn return_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     just(Token::Keyword(Keyword::Return))
         .ignore_then(expression().or_not())
         .map(Statement::Return)
@@ -179,7 +177,7 @@ fn return_statement<'tokens, 'src: 'tokens>(
 }
 
 fn discard_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     just(Token::Keyword(Keyword::Discard))
         .to(Statement::Discard)
         .labelled("discard statement")
@@ -187,7 +185,7 @@ fn discard_statement<'tokens, 'src: 'tokens>(
 }
 
 fn break_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     let just_break = just(Token::Keyword(Keyword::Break)).to(Statement::Break);
 
     let break_if = just(Token::Keyword(Keyword::Break))
@@ -201,7 +199,7 @@ fn break_statement<'tokens, 'src: 'tokens>(
 }
 
 fn continue_statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     just(Token::Keyword(Keyword::Continue))
         .to(Statement::Continue)
         .labelled("continue statement")
@@ -209,11 +207,10 @@ fn continue_statement<'tokens, 'src: 'tokens>(
 }
 
 fn compound_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'src, 'tokens>> + Clone
-{
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Statement>, RichErr<'tokens, 'src>> + Clone {
     just(Token::Trivia)
         .or_not()
         .ignore_then(stmt)
@@ -226,10 +223,10 @@ fn compound_statement<'tokens, 'src: 'tokens>(
 }
 
 fn loop_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     let loop_attributes = Attribute::list_parser();
     let body_attributes = Attribute::list_parser();
 
@@ -250,10 +247,10 @@ fn loop_statement<'tokens, 'src: 'tokens>(
 }
 
 fn for_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     let init = choice((
         variable_or_value_decl().map(Statement::Declaration),
         assignment_statement(),
@@ -296,10 +293,10 @@ fn for_statement<'tokens, 'src: 'tokens>(
 }
 
 fn while_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     Attribute::list_parser()
         .then_ignore(just(Token::Keyword(Keyword::While)))
         .then(expression())
@@ -314,10 +311,10 @@ fn while_statement<'tokens, 'src: 'tokens>(
 }
 
 fn continuing_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     Attribute::list_parser()
         .then_ignore(just(Token::Keyword(Keyword::Continuing)))
         .then(compound_statement(stmt.clone()))
@@ -327,10 +324,10 @@ fn continuing_statement<'tokens, 'src: 'tokens>(
 }
 
 fn if_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     let if_clause = just(Token::Keyword(Keyword::If))
         .ignore_then(expression())
         .then(compound_statement(stmt.clone()))
@@ -358,10 +355,10 @@ fn if_statement<'tokens, 'src: 'tokens>(
 }
 
 fn switch_statement<'tokens, 'src: 'tokens>(
-    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>>
+    stmt: impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Statement, RichErr<'tokens, 'src>> + Clone {
     Attribute::list_parser()
         .then_ignore(just(Token::Keyword(Keyword::Switch)))
         .then(expression())
@@ -381,10 +378,10 @@ fn switch_statement<'tokens, 'src: 'tokens>(
 }
 
 fn optionally_typed_ident<'tokens, 'src: 'tokens>(
-    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+    expr: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, OptionallyTypedIdent, RichErr<'src, 'tokens>> + Clone
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, OptionallyTypedIdent, RichErr<'tokens, 'src>> + Clone
 {
     let type_specifier = template_elaborated_ident(expr);
 
@@ -399,8 +396,8 @@ fn optionally_typed_ident<'tokens, 'src: 'tokens>(
 }
 
 pub fn statement<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, (Statement, SimpleSpan), RichErr<'src, 'tokens>>
-       + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, (Statement, SimpleSpan), RichErr<'tokens, 'src>> + Clone
+{
     recursive(|this| {
         choice((
             if_statement(this.clone()),

@@ -5,16 +5,15 @@ use self::statement::{statement, Statement};
 use super::token::{parse::tokenizer, template::insert_template_tokens, Token};
 use chumsky::prelude::*;
 
+type RichErr<'tokens, 'src> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
 type ParserInput<'tokens, 'src> = chumsky::input::SpannedInput<
     Token<'src>,
     SimpleSpan<usize>,
     &'tokens [(Token<'src>, SimpleSpan<usize>)],
 >;
 
-type RichErr<'src, 'tokens> = extra::Err<Rich<'tokens, Token<'src>, SimpleSpan>>;
-
 pub fn ast_parser<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<(Statement, SimpleSpan)>, RichErr<'src, 'tokens>>
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<(Statement, SimpleSpan)>, RichErr<'tokens, 'src>>
 {
     statement()
         .then_ignore(just(Token::SyntaxToken(";")).or_not())

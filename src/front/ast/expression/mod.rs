@@ -49,19 +49,19 @@ pub enum Expression {
 
 pub fn st<'tokens, 'src: 'tokens>(
     t: &'src str,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Token, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Token, RichErr<'tokens, 'src>> + Clone {
     just(Token::SyntaxToken(t))
 }
 
 pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
-    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
 ) -> impl Parser<
     'tokens,
     ParserInput<'tokens, 'src>,
     ComponentOrSwizzleSpecifier,
-    RichErr<'src, 'tokens>,
+    RichErr<'tokens, 'src>,
 > + Clone {
     let ident_str = select!(Token::Ident(ident) => ident.to_owned());
 
@@ -85,7 +85,7 @@ pub fn component_or_swizzle_specifier<'tokens, 'src: 'tokens>(
 }
 
 pub fn expression<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>> + Clone {
     recursive(|expression| {
         let primary_expression = choice((
             select!(Token::Literal(lit) => Expression::Literal(lit)),
@@ -255,16 +255,16 @@ pub fn expression<'tokens, 'src: 'tokens>(
 }
 
 pub fn spanned_expression<'tokens, 'src: 'tokens>(
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, (Expression, SimpleSpan), RichErr<'src, 'tokens>>
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, (Expression, SimpleSpan), RichErr<'tokens, 'src>>
        + Clone {
     expression().map_with(|expr, e| (expr, e.span()))
 }
 
 pub fn template_list<'tokens, 'src: 'tokens>(
-    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateList, RichErr<'src, 'tokens>> + Clone
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateList, RichErr<'tokens, 'src>> + Clone
 {
     expression
         .clone()
@@ -277,10 +277,10 @@ pub fn template_list<'tokens, 'src: 'tokens>(
 }
 
 pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
-    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'src, 'tokens>>
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, TemplateElaboratedIdent, RichErr<'tokens, 'src>>
        + Clone {
     let ident = select!(Token::Ident(ident) => ident.to_owned());
     let template_list = template_list(expression);
@@ -291,10 +291,10 @@ pub fn template_elaborated_ident<'tokens, 'src: 'tokens>(
 }
 
 pub fn call_expression<'tokens, 'src: 'tokens>(
-    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallPhrase, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, CallPhrase, RichErr<'tokens, 'src>> + Clone {
     template_elaborated_ident(expression.clone())
         .then(
             expression
@@ -309,10 +309,10 @@ pub fn call_expression<'tokens, 'src: 'tokens>(
 
 #[allow(non_snake_case)]
 pub fn primary_expression<'tokens, 'src: 'tokens>(
-    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>>
+    expression: impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>>
         + Clone
         + 'tokens,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'src, 'tokens>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Expression, RichErr<'tokens, 'src>> + Clone {
     let paren_expression = expression
         .clone()
         .delimited_by(st("("), st(")"))

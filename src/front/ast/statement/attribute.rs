@@ -13,8 +13,7 @@ pub struct Attribute {
 
 impl Attribute {
     fn parser<'tokens, 'src: 'tokens>(
-    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Attribute, RichErr<'src, 'tokens>> + Clone
-    {
+    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Attribute, RichErr<'tokens, 'src>> + Clone {
         let name = select! {
             Token::Ident(ident) => ident.to_owned(),
             Token::Keyword(keyword) => keyword.into(),
@@ -36,8 +35,7 @@ impl Attribute {
     }
 
     pub fn list_parser<'tokens, 'src: 'tokens>(
-    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Self>, RichErr<'src, 'tokens>> + Clone
-    {
+    ) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Vec<Self>, RichErr<'tokens, 'src>> + Clone {
         Self::parser().repeated().collect().labelled("attributes")
     }
 }
