@@ -45,6 +45,54 @@ pub enum Token<'src> {
     #[token("while", |_| Keyword::While)]
     Keyword(Keyword),
 
+    #[token("<<=")]
+    #[token(">>=")]
+    #[token("==")]
+    #[token("!=")]
+    #[token("<=")]
+    #[token(">=")]
+    #[token("&&")]
+    #[token("||")]
+    #[token("->")]
+    #[token("=>")]
+    #[token("++")]
+    #[token("--")]
+    #[token("+=")]
+    #[token("-=")]
+    #[token("*=")]
+    #[token("/=")]
+    #[token("%=")]
+    #[token("&=")]
+    #[token("|=")]
+    #[token("^=")]
+    #[token(">>")]
+    #[token("<<")]
+    #[token("(")]
+    #[token(")")]
+    #[token("[")]
+    #[token("]")]
+    #[token("{")]
+    #[token("}")]
+    #[token(";")]
+    #[token(".")]
+    #[token(",")]
+    #[token(":")]
+    #[token("&")]
+    #[token("|")]
+    #[token("^")]
+    #[token("@")]
+    #[token("=")]
+    #[token(">")]
+    #[token("<")]
+    #[token("%")]
+    #[token("/")]
+    #[token("+")]
+    #[token("-")]
+    #[token("*")]
+    #[token("~")]
+    #[token("!")]
+    Syntax(&'src str),
+
     #[regex(r"([_\p{XID_Start}][\p{XID_Continue}]+)|([\p{XID_Start}])|_", |lex| parse_ident(lex.slice()), priority = 2)]
     Ident(&'src str),
 }
@@ -167,5 +215,24 @@ mod test {
             lexer.next(),
             "Reserved words should not be valid"
         );
+    }
+
+    #[test]
+    pub fn operators_take_priority() {
+        let operators = [
+            "<<=", ">>=", "==", "!=", "<=", ">=", "&&", "||", "->", "=>", "++", "--", "+=", "-=",
+            "*=", "/=", "%=", "&=", "|=", "^=", ">>", "<<", "(", ")", "[", "]", "{", "}", ";", ".",
+            ",", ":", "&", "|", "^", "@", "=", ">", "<", "%", "/", "+", "-", "*", "~", "!",
+        ];
+
+        for op in operators.iter() {
+            let mut lexer = Token::lexer(op);
+            assert_eq!(
+                Some(Ok(Token::Syntax(op))),
+                lexer.next(),
+                "Lexer should prioritize operator {:?} over ident",
+                op
+            );
+        }
     }
 }
