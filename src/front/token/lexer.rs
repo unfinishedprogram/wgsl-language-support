@@ -45,7 +45,7 @@ pub enum Token<'src> {
     #[token("while", |_| Keyword::While)]
     Keyword(Keyword),
 
-    #[regex(r"([_\p{XID_Start}][\p{XID_Continue}]+)|([\p{XID_Start}])|_", |lex| parse_ident(lex.slice()))]
+    #[regex(r"([_\p{XID_Start}][\p{XID_Continue}]+)|([\p{XID_Start}])|_", |lex| parse_ident(lex.slice()), priority = 2)]
     Ident(&'src str),
 }
 
