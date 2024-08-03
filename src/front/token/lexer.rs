@@ -93,6 +93,10 @@ pub enum Token<'src> {
     #[token("!")]
     Syntax(&'src str),
 
+    #[token("true", |_| true)]
+    #[token("false", |_| false)]
+    Boolean(bool),
+
     #[regex(r"([_\p{XID_Start}][\p{XID_Continue}]+)|([\p{XID_Start}])|_", |lex| parse_ident(lex.slice()), priority = 2)]
     Ident(&'src str),
 }
@@ -232,6 +236,21 @@ mod test {
                 lexer.next(),
                 "Lexer should prioritize operator {:?} over ident",
                 op
+            );
+        }
+    }
+
+    #[test]
+    pub fn boolean_literals() {
+        let bools = [("true", true), ("false", false)];
+
+        for (source, value) in bools.iter() {
+            let mut lexer = Token::lexer(source);
+            assert_eq!(
+                Some(Ok(Token::Boolean(*value))),
+                lexer.next(),
+                "Lexer should parse boolean literal {:?}",
+                value
             );
         }
     }
