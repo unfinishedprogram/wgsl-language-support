@@ -104,6 +104,21 @@ pub enum Token<'src> {
     #[regex(r"[1-9][0-9]*[iu]?")] // Decimal Literals
     #[regex(r"0[xX][0-9a-fA-F]+[iu]?")] // Hex Literals
     Integer(&'src str),
+
+    // Decimal Float Literals
+    #[regex(r"0[fh]")]
+    #[regex(r"[1-9][0-9]*[fh]")]
+    #[regex(r"[0-9]*\.[0-9]+([eE][+-]?[0-9]+)?[fh]?")]
+    #[regex(r"[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?[fh]?", priority = 5)]
+    #[regex(r"[0-9]+[eE][+-]?[0-9]+[fh]?")]
+    // Hex Float Literals
+    #[regex(
+        r"0[xX][0-9a-fA-F]*\.[0-9a-fA-F]+([pP][+-]?[0-9]+[fh]?)?",
+        priority = 9
+    )]
+    #[regex(r"0[xX][0-9a-fA-F]+\.[0-9a-fA-F]*([pP][+-]?[0-9]+[fh]?)?")]
+    #[regex(r"0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fh]?")]
+    Float(&'src str),
 }
 
 #[cfg(test)]
@@ -287,6 +302,41 @@ mod test {
                 Some(Ok(Token::Integer(literal))),
                 lexer.next(),
                 "Lexer should parse integer hex literal {:?}",
+                literal
+            );
+        }
+    }
+
+    #[test]
+    pub fn decimal_float_literals() {
+        let literals = ["0.e+4f", "01.", ".01", "12.34", ".0f", "0h", "1e-3"];
+        for literal in literals.iter() {
+            let mut lexer = Token::lexer(literal);
+            assert_eq!(
+                Some(Ok(Token::Float(literal))),
+                lexer.next(),
+                "Lexer should parse float decimal literal {:?}",
+                literal
+            );
+        }
+    }
+
+    #[test]
+    pub fn hex_float_literals() {
+        let literals = [
+            "0xa.fp+2",
+            "0x1P+4f",
+            "0X.3",
+            "0x3p+2h",
+            "0X1.fp-4",
+            "0x3.2p+2h",
+        ];
+        for literal in literals.iter() {
+            let mut lexer = Token::lexer(literal);
+            assert_eq!(
+                Some(Ok(Token::Float(literal))),
+                lexer.next(),
+                "Lexer should parse float hex literal {:?}",
                 literal
             );
         }
