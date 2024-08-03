@@ -99,6 +99,11 @@ pub enum Token<'src> {
 
     #[regex(r"([_\p{XID_Start}][\p{XID_Continue}]+)|([\p{XID_Start}])|_", |lex| parse_ident(lex.slice()), priority = 2)]
     Ident(&'src str),
+
+    #[regex(r"0[iu]?")] // Zero Values
+    #[regex(r"[1-9][0-9]*[iu]?")] // Decimal Literals
+    #[regex(r"0[xX][0-9a-fA-F]+[iu]?")] // Hex Literals
+    Integer(&'src str),
 }
 
 #[cfg(test)]
@@ -251,6 +256,38 @@ mod test {
                 lexer.next(),
                 "Lexer should parse boolean literal {:?}",
                 value
+            );
+        }
+    }
+
+    #[test]
+    pub fn decimal_int_literals() {
+        let literals = ["0", "0u", "0i", "1u", "123", "5346u"];
+
+        for literal in literals.iter() {
+            let mut lexer = Token::lexer(literal);
+            assert_eq!(
+                Some(Ok(Token::Integer(literal))),
+                lexer.next(),
+                "Lexer should parse integer decimal literal {:?}",
+                literal
+            );
+        }
+    }
+
+    #[test]
+    pub fn hex_int_literals() {
+        let literals = [
+            "0x0", "0x0u", "0x0i", "0x1u", "0x123", "0x5346u", "0X123u", "0x3f",
+        ];
+
+        for literal in literals.iter() {
+            let mut lexer = Token::lexer(literal);
+            assert_eq!(
+                Some(Ok(Token::Integer(literal))),
+                lexer.next(),
+                "Lexer should parse integer hex literal {:?}",
+                literal
             );
         }
     }
