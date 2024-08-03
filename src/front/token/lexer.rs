@@ -1,10 +1,13 @@
+use comment::lex_multiline_comment;
 use logos::Logos;
+mod comment;
 mod keyword;
 use keyword::{parse_ident, IdentError, Keyword};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum LexError {
     InvalidIdentifier(IdentError),
+    UnterminatedComment,
     #[default]
     Other,
 }
@@ -119,11 +122,26 @@ pub enum Token<'src> {
     #[regex(r"0[xX][0-9a-fA-F]+\.[0-9a-fA-F]*([pP][+-]?[0-9]+[fh]?)?")]
     #[regex(r"0[xX][0-9a-fA-F]+[pP][+-]?[0-9]+[fh]?")]
     Float(&'src str),
+
+    #[regex(r"/\*", lex_multiline_comment)]
+    #[regex(r"\/\/.*\n")]
+    Trivia(&'src str),
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    pub fn whitespace_is_skipped() {
+        let source = "  \t\n  const";
+        let mut lexer = Token::lexer(source);
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should skip whitespace"
+        );
+    }
 
     #[test]
     pub fn ident_with_leading_underscore_is_valid() {
@@ -340,5 +358,80 @@ mod test {
                 literal
             );
         }
+    }
+
+    #[test]
+    pub fn comments_are_skipped() {
+        let source = "/* This is a comment */ const";
+        let mut lexer = Token::lexer(source);
+        assert_eq!(
+            Some(Ok(Token::Trivia("/* This is a comment */"))),
+            lexer.next(),
+            "Lexer should handle comments"
+        );
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should find keyword after comment"
+        );
+    }
+    #[test]
+    pub fn multiline_comment_basic() {
+        let source = "const /* This is a\nmultiline comment */ const";
+        let mut lexer = Token::lexer(source);
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should find keyword before multiline comment"
+        );
+        assert_eq!(
+            Some(Ok(Token::Trivia("/* This is a\nmultiline comment */"))),
+            lexer.next(),
+            "Lexer should handle multiline comments"
+        );
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should find keyword after multiline comment"
+        );
+    }
+
+    #[test]
+    pub fn multiline_comment_nested() {
+        let source = "const /* outside first \n /* inside */ \n outside second */ const";
+        let mut lexer = Token::lexer(source);
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should find keyword before multiline comment"
+        );
+        assert_eq!(
+            Some(Ok(Token::Trivia(
+                "/* outside first \n /* inside */ \n outside second */"
+            ))),
+            lexer.next(),
+            "Lexer should handle multiline comments"
+        );
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should find keyword after multiline comment"
+        );
+    }
+
+    #[test]
+    pub fn multiline_comment_unterminated() {
+        let source = "const /* This is an unterminated comment";
+        let mut lexer = Token::lexer(source);
+        assert_eq!(
+            Some(Ok(Token::Keyword(Keyword::Const))),
+            lexer.next(),
+            "Lexer should find keyword before unterminated comment"
+        );
+        assert_eq!(
+            Some(Err(LexError::UnterminatedComment)),
+            lexer.next(),
+            "Lexer should error on unterminated comment"
+        );
     }
 }
