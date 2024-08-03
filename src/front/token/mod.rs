@@ -1,6 +1,6 @@
 use chumsky::{error::Rich, extra, span::SimpleSpan};
-
 mod ident;
+mod lexer;
 pub use ident::ident;
 
 pub mod parse;

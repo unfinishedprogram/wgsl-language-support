@@ -13,6 +13,7 @@ chumsky = { version = "1.0.0-alpha.7", features = [
     "label",
     "pratt",
 ] }
+logos = "0.14.1"
 regex = "1.10.2"
 unicode-ident = "1.0.12"
 
