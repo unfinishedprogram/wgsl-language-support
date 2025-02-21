@@ -13,16 +13,15 @@ fn main() {
     println!("{:#?}", ast_result);
 
     let mut colors = ColorGenerator::new();
-
     for err in ast_result.errors {
-        Report::build(ariadne::ReportKind::Error, "test.wgsl", err.span().start)
+        Report::build(ariadne::ReportKind::Error, err.span().into_range())
             .with_label(
-                Label::new(("test.wgsl", err.span().into_range()))
+                Label::new(err.span().into_range())
                     .with_message(err.message())
                     .with_color(colors.next()),
             )
             .finish()
-            .print(("test.wgsl", Source::from(include_str!("test.wgsl"))))
+            .print(Source::from(include_str!("test.wgsl")))
             .unwrap();
     }
 }
