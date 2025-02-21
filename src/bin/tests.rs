@@ -1,6 +1,5 @@
 use std::fs;
 
-use ariadne::{ColorGenerator, Label, Report, Source};
 use wgsl_ast::front::ast::{create_ast, tokenize};
 fn main() {
     let paths: Vec<(String, String)> = fs::read_dir("src/test_files")
@@ -22,9 +21,9 @@ fn main() {
         .collect();
 
     for _ in 0..1000 {
-        for (path, source) in &paths {
+        for (_path, source) in &paths {
             let token_result = tokenize(source);
-            let ast_result = create_ast(&token_result);
+            let _ast_result = create_ast(&token_result);
         }
     }
 }
