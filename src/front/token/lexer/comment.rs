@@ -2,12 +2,6 @@ use logos::Lexer;
 
 use super::{LexError, Token};
 
-// fn kilo(lex: &mut Lexer<Token>) -> Option<u64> {
-//     let slice = lex.slice();
-//     let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'k'
-//     Some(n * 1_000)
-// }
-
 pub fn lex_multiline_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Result<&'a str, LexError> {
     let remainder_slice = lex.remainder();
     let mut comment_depth = 1;

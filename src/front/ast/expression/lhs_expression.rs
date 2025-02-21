@@ -61,8 +61,6 @@ pub fn lhs_expression<'tokens, 'src: 'tokens>(
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches::assert_matches;
-
     use chumsky::{input::Input, Parser};
 
     use crate::front::{
@@ -90,7 +88,7 @@ mod tests {
 
     #[test]
     fn ident() {
-        assert_matches!(parse_from_source("foo"), LHSExpression::Ident(s) if s.as_str() == "foo");
+        assert!(matches!(parse_from_source("foo"), LHSExpression::Ident(s) if s.as_str() == "foo"));
     }
 
     #[test]
