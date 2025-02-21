@@ -49,7 +49,7 @@ pub enum Expression {
 
 pub fn st<'tokens, 'src: 'tokens>(
     t: &'src str,
-) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Token, RichErr<'tokens, 'src>> + Clone {
+) -> impl Parser<'tokens, ParserInput<'tokens, 'src>, Token<'src>, RichErr<'tokens, 'src>> + Clone {
     just(Token::SyntaxToken(t))
 }
 

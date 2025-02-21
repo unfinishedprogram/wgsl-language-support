@@ -18,14 +18,7 @@ pub fn find_templates(src: &str) -> Vec<(usize, usize)> {
     let mut in_line_comment = false;
     let mut in_block_comment = false;
 
-    let byte_position = |p| {
-        chars[0..p]
-            .iter()
-            .cloned()
-            .collect::<String>()
-            .as_bytes()
-            .len()
-    };
+    let byte_position = |p| chars[0..p].iter().cloned().collect::<String>().len();
 
     while current_position < chars.len() {
         if in_line_comment {
